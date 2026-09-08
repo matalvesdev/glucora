@@ -1,0 +1,50 @@
+{
+  "name": "glucora",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"pnpm dev:api\" \"pnpm dev:web\"",
+    "dev:web": "pnpm --filter @glucora/web dev",
+    "dev:api": "node --env-file=.env.local --import tsx --watch services/api/src/server.ts",
+    "build": "pnpm --filter @glucora/web build && tsup",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm openapi:check && pnpm build",
+    "db:up": "docker compose --env-file .env.local -f infrastructure/compose.yaml up -d --wait",
+    "db:down": "docker compose --env-file .env.local -f infrastructure/compose.yaml down",
+    "db:migrate": "node --env-file=.env.local --import tsx scripts/migrate.ts",
+    "env:init": "node scripts/init-env.mjs",
+    "openapi:generate": "tsx scripts/openapi.ts --write",
+    "openapi:check": "tsx scripts/openapi.ts",
+    "security:secrets": "node scripts/check-secrets.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^10.10.0",
+    "globals": "^17.0.0",
+    "prettier": "^3.8.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.56.0",
+    "vitest": "^4.0.0",
+    "pg": "^8.18.0",
+    "@sinclair/typebox": "^0.34.48"
+  }
+}
