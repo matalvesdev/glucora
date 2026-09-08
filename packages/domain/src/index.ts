@@ -150,3 +150,5 @@ export interface AuditRepository {
     resourceId: string,
   ): Promise<AuditEvent[]>;
 }
+
+export * from './observation';

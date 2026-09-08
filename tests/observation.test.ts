@@ -1,0 +1,105 @@
+import { describe, expect, it } from 'vitest';
+import {
+  validateQuantitativeObservation,
+  type QuantitativeObservation,
+} from '../packages/domain/src/index';
+
+const valid: QuantitativeObservation = {
+  id: 'obs_syntheticmeasure0001',
+  userId: 'usr_syntheticconsumer001',
+  type: { system: 'synthetic.test', code: 'measurement' },
+  quantity: {
+    decimalValue: '123.45',
+    unit: { system: 'synthetic.units', code: 'unit' },
+  },
+  occurredAt: '2026-01-01T10:00:00.000Z',
+  recordedAt: '2026-01-01T10:01:00.000Z',
+  ingestedAt: '2026-01-01T10:02:00.000Z',
+  sourceType: 'manual',
+  sourceId: 'src_syntheticmanual001',
+  provenanceId: 'prv_syntheticorigin001',
+  factClass: 'declaration',
+  status: 'current',
+  version: 1,
+  createdAt: '2026-01-01T10:02:00.000Z',
+};
+
+describe('quantitative observation domain', () => {
+  it('accepts a complete, exact and provenance-linked observation', () => {
+    expect(validateQuantitativeObservation(valid)).toEqual({
+      ok: true,
+      value: valid,
+    });
+  });
+
+  it.each([
+    ['opaque observation id', { id: '1' }, 'invalid_id'],
+    ['owner id', { userId: 'another-user' }, 'invalid_user_id'],
+    [
+      'type coding',
+      { type: { system: '', code: 'measurement' } },
+      'invalid_coding',
+    ],
+    [
+      'explicit unit',
+      { quantity: { ...valid.quantity, unit: { system: '', code: '' } } },
+      'invalid_coding',
+    ],
+    [
+      'exact decimal representation',
+      { quantity: { ...valid.quantity, decimalValue: 'NaN' } },
+      'invalid_decimal',
+    ],
+    [
+      'UTC timestamp',
+      { occurredAt: '2026-01-01T10:00:00-03:00' },
+      'invalid_timestamp',
+    ],
+    [
+      'real calendar timestamp',
+      { occurredAt: '2026-02-31T10:00:00.000Z' },
+      'invalid_timestamp',
+    ],
+    [
+      'temporal order',
+      { recordedAt: '2026-01-01T09:59:00.000Z' },
+      'invalid_temporal_order',
+    ],
+    ['source reference', { sourceId: 'manual' }, 'invalid_source_id'],
+    [
+      'source type',
+      { sourceType: 'unknown' as QuantitativeObservation['sourceType'] },
+      'invalid_source_type',
+    ],
+    ['provenance reference', { provenanceId: '' }, 'invalid_provenance_id'],
+    [
+      'inference as measurement',
+      { factClass: 'inference' },
+      'invalid_fact_class',
+    ],
+    [
+      'unknown status',
+      { status: 'unknown' as QuantitativeObservation['status'] },
+      'invalid_status',
+    ],
+    ['positive version', { version: 0 }, 'invalid_version'],
+  ])('rejects an invalid %s', (_name, override, error) => {
+    const result = validateQuantitativeObservation({
+      ...valid,
+      ...override,
+    } as QuantitativeObservation);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors).toContain(error);
+  });
+
+  it('does not convert, round or clinically interpret the supplied value', () => {
+    const candidate = {
+      ...valid,
+      quantity: { ...valid.quantity, decimalValue: '000.10' },
+    };
+    expect(validateQuantitativeObservation(candidate)).toEqual({
+      ok: false,
+      errors: ['invalid_decimal'],
+    });
+  });
+});
