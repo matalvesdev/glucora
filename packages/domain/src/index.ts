@@ -33,6 +33,13 @@ export interface ConsentEvent {
   readonly recordedAt: string;
 }
 
+export interface ConsentPurposeVersion {
+  readonly id: string;
+  readonly status: 'draft' | 'published' | 'retired';
+  readonly effectiveFrom: string | null;
+  readonly retiredAt: string | null;
+}
+
 export interface RecordConsentDecision {
   readonly id: string;
   readonly userId: string;
@@ -46,4 +53,71 @@ export interface RecordConsentDecision {
 export interface ConsentRepository {
   record(input: RecordConsentDecision): Promise<ConsentEvent>;
   history(userId: string, purposeVersionId: string): Promise<ConsentEvent[]>;
+  current(
+    userId: string,
+    purposeVersionId: string,
+  ): Promise<ConsentEvent | null>;
+}
+
+export type AuthorizationDenialReason =
+  | 'unauthenticated'
+  | 'account_inactive'
+  | 'subject_mismatch'
+  | 'purpose_unavailable'
+  | 'consent_required';
+
+export type AuthorizationDecision =
+  | { readonly allowed: true }
+  | { readonly allowed: false; readonly reason: AuthorizationDenialReason };
+
+export interface ConsumerCapabilityContext {
+  readonly actor: AuthenticatedActor | null;
+  readonly account: UserAccount | null;
+  readonly subjectUserId: string;
+  readonly purpose: ConsentPurposeVersion | null;
+  readonly currentConsent: ConsentEvent | null;
+  readonly evaluatedAt: string;
+}
+
+export function authorizeConsumerCapability(
+  context: ConsumerCapabilityContext,
+): AuthorizationDecision {
+  if (!context.actor) return { allowed: false, reason: 'unauthenticated' };
+  if (!context.account || context.account.status !== 'active')
+    return { allowed: false, reason: 'account_inactive' };
+  if (
+    context.actor.id !== context.account.id ||
+    context.actor.id !== context.subjectUserId
+  )
+    return { allowed: false, reason: 'subject_mismatch' };
+  const purpose = context.purpose;
+  const evaluatedAt = Date.parse(context.evaluatedAt);
+  const effectiveFrom = purpose?.effectiveFrom
+    ? Date.parse(purpose.effectiveFrom)
+    : Number.NaN;
+  const retiredAt = purpose?.retiredAt ? Date.parse(purpose.retiredAt) : null;
+  if (
+    !purpose ||
+    purpose.status !== 'published' ||
+    !purpose.effectiveFrom ||
+    !Number.isFinite(evaluatedAt) ||
+    !Number.isFinite(effectiveFrom) ||
+    effectiveFrom > evaluatedAt ||
+    (retiredAt !== null &&
+      (!Number.isFinite(retiredAt) || retiredAt <= evaluatedAt))
+  )
+    return { allowed: false, reason: 'purpose_unavailable' };
+  const consentOccurredAt = context.currentConsent
+    ? Date.parse(context.currentConsent.occurredAt)
+    : Number.NaN;
+  if (
+    !context.currentConsent ||
+    context.currentConsent.userId !== context.subjectUserId ||
+    context.currentConsent.purposeVersionId !== purpose.id ||
+    context.currentConsent.decision !== 'granted' ||
+    !Number.isFinite(consentOccurredAt) ||
+    consentOccurredAt > evaluatedAt
+  )
+    return { allowed: false, reason: 'consent_required' };
+  return { allowed: true };
 }

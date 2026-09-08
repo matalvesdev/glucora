@@ -159,6 +159,12 @@ describe('real PostgreSQL migrations and readiness', () => {
             occurredAt: new Date().toISOString(),
           });
           await expect(
+            ready.consents.current(
+              'usr_syntheticconsumer001',
+              'pur_syntheticpurpose001',
+            ),
+          ).resolves.toMatchObject({ decision: 'revoked' });
+          await expect(
             ready.consents.history(
               'usr_syntheticconsumer001',
               'pur_syntheticpurpose001',
