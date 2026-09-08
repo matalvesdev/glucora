@@ -106,6 +106,8 @@ importers:
         specifier: ^0.34.48
         version: 0.34.52
 
+  packages/domain: {}
+
   packages/observability:
     dependencies:
       pino:
@@ -146,6 +148,9 @@ importers:
       '@glucora/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@glucora/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@glucora/observability':
         specifier: workspace:*
         version: link:../../packages/observability

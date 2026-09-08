@@ -22,4 +22,13 @@ describe('environment boundary', () => {
       readConfig({ DATABASE_URL: 'https://localhost/glucora' }),
     ).toThrow('DATABASE_URL');
   });
+  it('prevents the development identity adapter in production', () => {
+    expect(() =>
+      readConfig({
+        DATABASE_URL: 'postgresql://localhost/glucora',
+        NODE_ENV: 'production',
+        AUTH_ADAPTER: 'development',
+      }),
+    ).toThrow('AUTH_ADAPTER');
+  });
 });

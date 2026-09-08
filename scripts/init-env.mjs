@@ -4,7 +4,7 @@ const password = randomBytes(24).toString('hex');
 try {
   await writeFile(
     '.env.local',
-    `DATABASE_URL=postgresql://glucora:${password}@127.0.0.1:55432/glucora\nPOSTGRES_PASSWORD=${password}\nNODE_ENV=development\n`,
+    `DATABASE_URL=postgresql://glucora:${password}@127.0.0.1:55432/glucora\nPOSTGRES_PASSWORD=${password}\nNODE_ENV=development\nAUTH_ADAPTER=development\n`,
     { flag: 'wx', mode: 0o600 },
   );
   console.info('.env.local created with generated local credentials.');
