@@ -29,3 +29,32 @@ test('connection failure offers a retry without health data entry', async ({
   ).toBeEnabled();
   await expect(page.locator('input,textarea')).toHaveCount(0);
 });
+
+test('privacy baseline is explicit about unavailable controls', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Privacidade' }).click();
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: 'Privacidade e consentimentos',
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole('status')).toContainText(
+    'Nenhuma escolha pode ser registrada',
+  );
+  await expect(
+    page.getByRole('heading', {
+      level: 2,
+      name: 'Nenhum consentimento disponível',
+    }),
+  ).toBeVisible();
+  await expect(page.locator('input,textarea,[role="switch"]')).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
