@@ -1,0 +1,22 @@
+name: glucora-local
+services:
+  postgres:
+    image: postgres:17.9-alpine@sha256:c7526c0f6c3f30260a563d7bcf8ad778effac59a44f8ffa86678c35418338609
+    environment:
+      POSTGRES_USER: glucora
+      POSTGRES_DB: glucora
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run pnpm env:init}
+      TZ: UTC
+    ports:
+      - '127.0.0.1:55432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U glucora -d glucora']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  pgdata:

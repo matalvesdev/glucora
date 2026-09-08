@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+docs/source-of-truth/
+node_modules/
+dist/
+.local/
+playwright-report/
+test-results/
+
+.pnpm-store/
