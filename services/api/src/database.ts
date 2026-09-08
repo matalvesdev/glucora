@@ -1,6 +1,7 @@
 import pg from 'pg';
 import { createPostgresUserAccountRepository } from './modules/identity/user-account-repository';
 import { createPostgresConsentRepository } from './modules/consent/consent-repository';
+import { createPostgresAuditRepository } from './modules/audit/audit-repository';
 export function createDatabase(connectionString: string) {
   const pool = new pg.Pool({
     connectionString,
@@ -15,6 +16,7 @@ export function createDatabase(connectionString: string) {
   pool.on('error', () => {});
   const users = createPostgresUserAccountRepository(pool);
   const consents = createPostgresConsentRepository(pool);
+  const audit = createPostgresAuditRepository(pool);
   return {
     async checkReadiness() {
       const result = await pool.query<{ version: string }>(
@@ -25,5 +27,6 @@ export function createDatabase(connectionString: string) {
     close: () => pool.end(),
     users,
     consents,
+    audit,
   };
 }

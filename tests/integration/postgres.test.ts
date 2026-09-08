@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(3);
+        ).toBe(4);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -48,8 +48,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0003_consent_events.sql'),
           join(directory, '0003_consent_events.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0004_audit_events.sql'),
+          join(directory, '0004_audit_events.sql'),
+        );
         await writeFile(
-          join(directory, '0004_failure.sql'),
+          join(directory, '0005_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -184,6 +188,32 @@ describe('real PostgreSQL migrations and readiness', () => {
               `UPDATE consent.purpose_versions SET notice_text = 'changed' WHERE id = $1`,
               ['pur_syntheticpurpose001'],
             ),
+          ).rejects.toThrow();
+          const auditEvent = await ready.audit.record({
+            id: 'aud_syntheticauditevent01',
+            eventKey: 'consent.decision_recorded',
+            actorType: 'consumer',
+            actorId: 'usr_syntheticconsumer001',
+            subjectId: 'usr_syntheticconsumer001',
+            resourceType: 'consent_event',
+            resourceId: 'cne_syntheticrevoke0001',
+            action: 'revoked',
+            outcome: 'succeeded',
+            requestId: '6ba7b810-9dad-41d1-80b4-00c04fd430c8',
+            retentionPolicyRef: 'synthetic-retention-review-ref',
+            occurredAt: new Date().toISOString(),
+          });
+          expect(auditEvent.eventKey).toBe('consent.decision_recorded');
+          await expect(
+            ready.audit.historyForResource(
+              'consent_event',
+              'cne_syntheticrevoke0001',
+            ),
+          ).resolves.toMatchObject([{ action: 'revoked' }]);
+          await expect(
+            client.query(`DELETE FROM audit.events WHERE id = $1`, [
+              'aud_syntheticauditevent01',
+            ]),
           ).rejects.toThrow();
         } finally {
           await client.end();
