@@ -17,6 +17,7 @@ try {
   const app = buildApp({
     checkReadiness: database.checkReadiness,
     identity,
+    users: database.users,
     logger: createLogger(config.LOG_LEVEL),
   });
   app.addHook('onClose', async () => database.close());

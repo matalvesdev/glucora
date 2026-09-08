@@ -19,6 +19,14 @@ function setup(ready: () => Promise<void> = async () => {}) {
   apps.push(app);
   return { app, logs };
 }
+const syntheticAccount = {
+  id: 'usr_syntheticconsumer001',
+  status: 'active' as const,
+  locale: 'pt-BR',
+  timezone: 'America/Sao_Paulo',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
 describe('foundation HTTP contract and privacy', () => {
   it('returns schema-valid health and server-generated request correlation', async () => {
     const { app } = setup();
@@ -54,6 +62,10 @@ describe('foundation HTTP contract and privacy', () => {
     const app = buildApp({
       checkReadiness: async () => {},
       identity: createDevelopmentIdentityAdapter(),
+      users: {
+        findById: async (id) =>
+          id === syntheticAccount.id ? syntheticAccount : null,
+      },
       logger: createLogger('info', logs.stream),
     });
     apps.push(app);
@@ -72,6 +84,22 @@ describe('foundation HTTP contract and privacy', () => {
     expect(response.statusCode).toBe(200);
     expect(Value.Check(MeSchema, response.json())).toBe(true);
     expect(logs.text()).not.toContain('usr_syntheticconsumer001');
+  });
+  it('denies authenticated actors without an active application account', async () => {
+    const logs = captureLogs();
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => null },
+      logger: createLogger('info', logs.stream),
+    });
+    apps.push(app);
+    const response = await app.inject({
+      url: '/v1/me',
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.body).not.toContain(syntheticAccount.id);
   });
   it('does not log request payloads, headers, URL values or upstream error details', async () => {
     const { app, logs } = setup(async () => {

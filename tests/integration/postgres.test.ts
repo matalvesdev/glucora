@@ -35,13 +35,17 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(1);
+        ).toBe(2);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0002_user_accounts.sql'),
+          join(directory, '0002_user_accounts.sql'),
+        );
         await writeFile(
-          join(directory, '0002_failure.sql'),
+          join(directory, '0003_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -62,6 +66,27 @@ describe('real PostgreSQL migrations and readiness', () => {
       const ready = createDatabase(url.toString());
       try {
         await expect(ready.checkReadiness()).resolves.toBeUndefined();
+        const client = new pg.Client({ connectionString: url.toString() });
+        await client.connect();
+        try {
+          await client.query(
+            `INSERT INTO identity.user_accounts (id, locale, timezone)
+           VALUES ($1, $2, $3)`,
+            ['usr_syntheticconsumer001', 'pt-BR', 'America/Sao_Paulo'],
+          );
+          await expect(
+            ready.users.findById('usr_syntheticconsumer001'),
+          ).resolves.toMatchObject({
+            id: 'usr_syntheticconsumer001',
+            status: 'active',
+            locale: 'pt-BR',
+          });
+          await expect(
+            ready.users.findById('usr_missingconsumer000'),
+          ).resolves.toBeNull();
+        } finally {
+          await client.end();
+        }
       } finally {
         await ready.close();
       }
@@ -70,5 +95,5 @@ describe('real PostgreSQL migrations and readiness', () => {
       await admin.end();
       await rm(directory, { recursive: true, force: true });
     }
-  }, 20000);
+  }, 60000);
 });
