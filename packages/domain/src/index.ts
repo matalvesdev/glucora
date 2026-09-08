@@ -121,3 +121,32 @@ export function authorizeConsumerCapability(
     return { allowed: false, reason: 'consent_required' };
   return { allowed: true };
 }
+
+export type AuditActorType = 'consumer' | 'system';
+export type AuditOutcome = 'succeeded' | 'denied' | 'failed';
+
+export interface AuditEvent {
+  readonly id: string;
+  readonly eventKey: string;
+  readonly actorType: AuditActorType;
+  readonly actorId: string | null;
+  readonly subjectId: string | null;
+  readonly resourceType: string;
+  readonly resourceId: string;
+  readonly action: string;
+  readonly outcome: AuditOutcome;
+  readonly requestId: string | null;
+  readonly retentionPolicyRef: string;
+  readonly occurredAt: string;
+  readonly recordedAt: string;
+}
+
+export type RecordAuditEvent = Omit<AuditEvent, 'recordedAt'>;
+
+export interface AuditRepository {
+  record(input: RecordAuditEvent): Promise<AuditEvent>;
+  historyForResource(
+    resourceType: string,
+    resourceId: string,
+  ): Promise<AuditEvent[]>;
+}
