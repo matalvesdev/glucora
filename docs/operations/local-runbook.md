@@ -26,3 +26,7 @@ When Docker is unavailable, PostgreSQL 17 binaries can run an isolated cluster i
 This instance is local development only. Its credentials are in ignored .env.local; never copy them to documentation.
 Stop with pg_ctl -D .local/pgdata stop. Start with pg_ctl -D .local/pgdata -l .local/postgres.log -o "-h 127.0.0.1 -p 55432" start, using the PostgreSQL bin directory.
 Do not start Compose while that instance uses port 55432.
+
+## Repository release control
+
+The private repository was created and work is in PR #1. GitHub refused main protection with HTTP 403 under the current plan. Keep PR review and successful CI as an explicit operating rule; automated enforcement requires an eligible GitHub plan. No upgrade or change of repository visibility was performed.

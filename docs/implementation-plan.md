@@ -15,7 +15,7 @@ Escopo desta primeira execução: **Iniciativa A somente**.
 | A8   | CI, lockfile, scans                           | execução remota                               |
 | A9   | liveness independente e readiness real        | falha/recuperação PostgreSQL                  |
 
-Estado inicial: implementação em validação. Resultados finais em validation.md.
+Estado: A1–A9 implementados e validados localmente e no CI Linux; resultados em [validation.md](validation.md). O gate de governança permanece HOLD pela indisponibilidade de proteção de main no plano atual. Não avançar para B nesta execução.
 Gate de saída: clone → install → env → PostgreSQL → migrate → dev → checks reproduzíveis; pendências conhecidas registradas.
 A aprovação deste gate de engenharia não significa aprovação dos gates clínicos, privacidade, produto ou beta.
 
