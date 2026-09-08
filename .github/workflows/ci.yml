@@ -4,6 +4,7 @@ on:
   pull_request:
 permissions:
   contents: read
+  pull-requests: read
 concurrency:
   group: foundation-${{ github.ref }}
   cancel-in-progress: true
@@ -27,6 +28,7 @@ jobs:
       - uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
       - run: pnpm security:secrets
       - run: pnpm audit --audit-level high
       - run: pnpm env:init
@@ -48,5 +50,5 @@ jobs:
           name: playwright-failure
           path: test-results/
           retention-days: 7
-      - run: pnpm db:down
+      - run: if test -f .env.local; then pnpm db:down; fi
         if: always()
