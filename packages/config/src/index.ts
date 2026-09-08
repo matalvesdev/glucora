@@ -26,6 +26,10 @@ const envSchema = z.object({
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'silent'])
       .default('info'),
   ),
+  AUTH_ADAPTER: z.preprocess(
+    optionalValue,
+    z.enum(['disabled', 'development']).default('disabled'),
+  ),
 });
 export function readConfig(env: Record<string, string | undefined>) {
   const result = envSchema.safeParse(env);
@@ -36,5 +40,10 @@ export function readConfig(env: Record<string, string | undefined>) {
           ', ',
         ),
     );
+  if (
+    result.data.NODE_ENV === 'production' &&
+    result.data.AUTH_ADAPTER === 'development'
+  )
+    throw new Error('Invalid configuration: AUTH_ADAPTER');
   return result.data;
 }

@@ -6,6 +6,7 @@ export default ts.config(
     ignores: [
       '**/dist/**',
       '**/node_modules/**',
+      '**/.vite/**',
       '.local/**',
       'playwright-report/**',
       'test-results/**',

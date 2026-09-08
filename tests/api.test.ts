@@ -4,6 +4,8 @@ import { createLogger } from '../packages/observability/src/index';
 import { captureLogs } from '../packages/test-utils/src/index';
 import { Value } from '@sinclair/typebox/value';
 import { HealthSchema, ErrorSchema } from '../packages/contracts/src/index';
+import { MeSchema } from '../packages/contracts/src/index';
+import { createDevelopmentIdentityAdapter } from '../services/api/src/modules/identity/identity-adapter';
 const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -44,6 +46,32 @@ describe('foundation HTTP contract and privacy', () => {
     const { app } = setup();
     for (const url of ['/v1/observations', '/v1/consents', '/v1/chat'])
       expect((await app.inject(url)).statusCode).toBe(404);
+  });
+  it('denies identity by default and accepts only a valid local synthetic actor', async () => {
+    const { app: denied } = setup();
+    expect((await denied.inject('/v1/me')).statusCode).toBe(401);
+    const logs = captureLogs();
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      logger: createLogger('info', logs.stream),
+    });
+    apps.push(app);
+    expect(
+      (
+        await app.inject({
+          url: '/v1/me',
+          headers: { 'x-glucora-dev-actor': 'invalid' },
+        })
+      ).statusCode,
+    ).toBe(401);
+    const response = await app.inject({
+      url: '/v1/me',
+      headers: { 'x-glucora-dev-actor': 'usr_syntheticconsumer001' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(Value.Check(MeSchema, response.json())).toBe(true);
+    expect(logs.text()).not.toContain('usr_syntheticconsumer001');
   });
   it('does not log request payloads, headers, URL values or upstream error details', async () => {
     const { app, logs } = setup(async () => {

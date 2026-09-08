@@ -11,5 +11,14 @@ export const ErrorSchema = Type.Object(
   { code: Type.String(), message: Type.String(), request_id: RequestIdSchema },
   { additionalProperties: false },
 );
+export const MeSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^usr_[A-Za-z0-9_-]{16,64}$' }),
+    kind: Type.Literal('consumer'),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
 export type HealthResponse = Static<typeof HealthSchema>;
 export type ErrorResponse = Static<typeof ErrorSchema>;
+export type MeResponse = Static<typeof MeSchema>;

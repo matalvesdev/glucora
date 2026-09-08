@@ -3,9 +3,12 @@ import Fastify, { LogController } from 'fastify';
 import swagger from '@fastify/swagger';
 import helmet from '@fastify/helmet';
 import { HealthSchema, ErrorSchema } from '@glucora/contracts';
+import { MeSchema } from '@glucora/contracts';
+import type { IdentityPort } from '@glucora/domain';
 import { createLogger } from '@glucora/observability';
 export interface AppDependencies {
   checkReadiness: () => Promise<void>;
+  identity?: IdentityPort<import('fastify').FastifyRequest>;
   logger?: ReturnType<typeof createLogger>;
 }
 export function buildApp(deps: AppDependencies) {
@@ -96,6 +99,25 @@ export function buildApp(deps: AppDependencies) {
             request_id: request.id,
           });
         }
+      },
+    );
+    routes.get(
+      '/v1/me',
+      {
+        schema: {
+          operationId: 'getCurrentUser',
+          response: { 200: MeSchema, 401: ErrorSchema },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        return { ...actor, request_id: request.id };
       },
     );
   });

@@ -6,6 +6,7 @@
   "dependencies": {
     "@glucora/config": "workspace:*",
     "@glucora/contracts": "workspace:*",
+    "@glucora/domain": "workspace:*",
     "@glucora/observability": "workspace:*",
     "fastify": "^5.7.0",
     "@fastify/swagger": "^9.7.0",
