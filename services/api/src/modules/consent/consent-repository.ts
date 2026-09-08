@@ -82,5 +82,18 @@ export function createPostgresConsentRepository(pool: Pool): ConsentRepository {
       );
       return result.rows.map(mapEvent);
     },
+    async current(userId, purposeVersionId): Promise<ConsentEvent | null> {
+      const result = await pool.query<ConsentEventRow>(
+        `SELECT id, user_id, purpose_version_id, event_type, channel,
+                idempotency_key, occurred_at, recorded_at
+         FROM consent.events
+         WHERE user_id = $1 AND purpose_version_id = $2
+         ORDER BY occurred_at DESC, recorded_at DESC, id DESC
+         LIMIT 1`,
+        [userId, purposeVersionId],
+      );
+      const row = result.rows[0];
+      return row ? mapEvent(row) : null;
+    },
   };
 }
