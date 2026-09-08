@@ -4,11 +4,12 @@ import swagger from '@fastify/swagger';
 import helmet from '@fastify/helmet';
 import { HealthSchema, ErrorSchema } from '@glucora/contracts';
 import { MeSchema } from '@glucora/contracts';
-import type { IdentityPort } from '@glucora/domain';
+import type { IdentityPort, UserAccountRepository } from '@glucora/domain';
 import { createLogger } from '@glucora/observability';
 export interface AppDependencies {
   checkReadiness: () => Promise<void>;
   identity?: IdentityPort<import('fastify').FastifyRequest>;
+  users?: UserAccountRepository;
   logger?: ReturnType<typeof createLogger>;
 }
 export function buildApp(deps: AppDependencies) {
@@ -106,7 +107,7 @@ export function buildApp(deps: AppDependencies) {
       {
         schema: {
           operationId: 'getCurrentUser',
-          response: { 200: MeSchema, 401: ErrorSchema },
+          response: { 200: MeSchema, 401: ErrorSchema, 403: ErrorSchema },
         },
       },
       async (request, reply) => {
@@ -117,7 +118,23 @@ export function buildApp(deps: AppDependencies) {
             message: 'Autenticação necessária.',
             request_id: request.id,
           });
-        return { ...actor, request_id: request.id };
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        return {
+          id: account.id,
+          kind: actor.kind,
+          status: account.status,
+          locale: account.locale,
+          timezone: account.timezone,
+          created_at: account.createdAt,
+          updated_at: account.updatedAt,
+          request_id: request.id,
+        };
       },
     );
   });

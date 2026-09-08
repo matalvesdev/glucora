@@ -24,5 +24,5 @@ A aprovação deste gate de engenharia não significa aprovação dos gates clí
 B Identity/Consent → C Longitudinal Data → D Timeline → E Consultation → F Low-risk AI → G Privacy → H Operational Readiness.
 Antes de B: atualizar leitura de Product/Clinical/Compliance, contrato de identidade, propósito/consentimento, matriz de autorização e decisão de adapter local versus provider. Não escolher provider estratégico implicitamente.
 F exige contexto/evidência/evals; H exige responsáveis, backup/restore e aprovação operacional antes de beta.
-Iniciativa B iniciada pela fronteira de identidade: contrato de ator, adapter local fail-closed, `/v1/me` e ADR-013 PROPOSED. B2 e B4–B8 aguardam definição/aceite das finalidades, base legal, retenção e arquitetura de identidade de produção.
+Iniciativa B em andamento: B1 concluído; B2 possui persistência mínima de conta/perfil; B3 possui autenticação local fail-closed e `/v1/me` autorizado somente para conta ativa. ADR-013 permanece PROPOSED. B4–B8 aguardam definição/aceite das finalidades, base legal, retenção e arquitetura de identidade de produção.
 As demais iniciativas permanecem backlog documentado, sem tabelas ou endpoints especulativos.

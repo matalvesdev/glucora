@@ -11,3 +11,7 @@ Scope: public availability probes and a static shell; no health data storage, id
 - Authentication and authorization are not simulated. No patient-facing capability exists; deny-by-default is absence of business routes.
 - No analytics, remote fonts, ad pixels, AI calls or service-worker health caching.
   Residual risks: internet-facing abuse/rate limiting and edge TLS deployment, auth/CSRF, production roles, metrics/tracing exporter, external security review and clinical/privacy gates are future requirements, not completed controls.
+
+## Identity persistence extension
+
+The application now resolves an authenticated opaque actor against `identity.user_accounts`. Authentication alone is insufficient: missing or disabled records receive a generic denial. The table stores no credentials, email or health information. Parameterized lookup prevents identifier injection, and responses/logs do not disclose whether another account exists. Production identity, account provisioning, session revocation and privileged roles remain open.

@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { createPostgresUserAccountRepository } from './modules/identity/user-account-repository';
 export function createDatabase(connectionString: string) {
   const pool = new pg.Pool({
     connectionString,
@@ -11,6 +12,7 @@ export function createDatabase(connectionString: string) {
   });
   // Pool errors must not emit raw connection details or terminate the process.
   pool.on('error', () => {});
+  const users = createPostgresUserAccountRepository(pool);
   return {
     async checkReadiness() {
       const result = await pool.query<{ version: string }>(
@@ -19,5 +21,6 @@ export function createDatabase(connectionString: string) {
       if (result.rowCount !== 1) throw new Error('Schema not ready');
     },
     close: () => pool.end(),
+    users,
   };
 }

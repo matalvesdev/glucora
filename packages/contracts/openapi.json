@@ -101,7 +101,16 @@
                 "schema": {
                   "additionalProperties": false,
                   "type": "object",
-                  "required": ["id", "kind", "request_id"],
+                  "required": [
+                    "id",
+                    "kind",
+                    "status",
+                    "locale",
+                    "timezone",
+                    "created_at",
+                    "updated_at",
+                    "request_id"
+                  ],
                   "properties": {
                     "id": {
                       "pattern": "^usr_[A-Za-z0-9_-]{16,64}$",
@@ -110,6 +119,27 @@
                     "kind": {
                       "type": "string",
                       "enum": ["consumer"]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["active"]
+                    },
+                    "locale": {
+                      "pattern": "^[a-z]{2}(?:-[A-Z]{2})?$",
+                      "type": "string"
+                    },
+                    "timezone": {
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                      "type": "string"
                     },
                     "request_id": {
                       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
@@ -121,6 +151,30 @@
             }
           },
           "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
             "description": "Default Response",
             "content": {
               "application/json": {
