@@ -50,6 +50,18 @@ export interface ObservationRepository {
     id: string,
     userId: string,
   ): Promise<QuantitativeObservation | null>;
+  correct(input: ObservationCorrection): Promise<QuantitativeObservation>;
+}
+
+export interface ObservationCorrection {
+  readonly replacement: QuantitativeObservation;
+  readonly provenance: ProvenanceRecord;
+  readonly audit: {
+    readonly id: string;
+    readonly requestId: string;
+    readonly retentionPolicyRef: string;
+    readonly occurredAt: string;
+  };
 }
 
 export type ObservationValidationError =

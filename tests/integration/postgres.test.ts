@@ -100,7 +100,8 @@ describe('real PostgreSQL migrations and readiness', () => {
             `INSERT INTO consent.purpose_versions
                (id, purpose_key, version, status, title, notice_text,
                 legal_basis_ref, retention_policy_ref, owner_ref, effective_from)
-             VALUES ($1, $2, 1, 'published', $3, $4, $5, $6, $7, now()),
+             VALUES ($1, $2, 1, 'published', $3, $4, $5, $6, $7,
+                     TIMESTAMPTZ '2020-01-01T00:00:00.000Z'),
                     ($8, $9, 1, 'draft', $3, $4, $5, $6, $7, NULL)`,
             [
               'pur_syntheticpurpose001',
@@ -293,6 +294,122 @@ describe('real PostgreSQL migrations and readiness', () => {
               [observation.id],
             ),
           ).rejects.toThrow();
+          const correctedAt = new Date(Date.now() + 1).toISOString();
+          const corrected = await ready.observations.correct({
+            replacement: {
+              ...observation,
+              version: 2,
+              quantity: {
+                ...observation.quantity,
+                decimalValue: '124.000000000',
+              },
+              sourceId: 'src_syntheticcorrection01',
+              provenanceId: 'prv_syntheticcorrection01',
+              recordedAt: correctedAt,
+              ingestedAt: correctedAt,
+              createdAt: correctedAt,
+            },
+            provenance: {
+              id: 'prv_syntheticcorrection01',
+              userId: observation.userId,
+              sourceType: 'manual',
+              sourceId: 'src_syntheticcorrection01',
+              transformationRef: null,
+              recordedAt: correctedAt,
+              createdAt: correctedAt,
+            },
+            audit: {
+              id: 'aud_syntheticcorrection001',
+              requestId: 'c4f5c443-e30b-4b42-82ba-f00a2062c6dd',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: correctedAt,
+            },
+          });
+          expect(corrected.version).toBe(2);
+          await expect(
+            ready.observations.findCurrent(observation.id, observation.userId),
+          ).resolves.toMatchObject({
+            version: 2,
+            quantity: { decimalValue: '124.000000000' },
+          });
+          expect(
+            (
+              await client.query(
+                `SELECT version, status FROM health.observations
+                 WHERE id = $1 ORDER BY version`,
+                [observation.id],
+              )
+            ).rows,
+          ).toEqual([
+            { version: 1, status: 'superseded' },
+            { version: 2, status: 'current' },
+          ]);
+          await expect(
+            ready.audit.historyForResource('observation', observation.id),
+          ).resolves.toMatchObject([
+            { action: 'corrected', outcome: 'succeeded' },
+          ]);
+          await expect(
+            ready.observations.correct({
+              replacement: {
+                ...corrected,
+                sourceId: 'src_syntheticconflict001',
+                provenanceId: 'prv_syntheticconflict001',
+              },
+              provenance: {
+                id: 'prv_syntheticconflict001',
+                userId: observation.userId,
+                sourceType: 'manual',
+                sourceId: 'src_syntheticconflict001',
+                transformationRef: null,
+                recordedAt: correctedAt,
+                createdAt: correctedAt,
+              },
+              audit: {
+                id: 'aud_syntheticconflict0001',
+                requestId: '6995da74-fcd6-4ded-a528-2109903ff971',
+                retentionPolicyRef: 'synthetic-retention-review-ref',
+                occurredAt: correctedAt,
+              },
+            }),
+          ).rejects.toThrow('correction conflict');
+          await expect(
+            ready.observations.correct({
+              replacement: {
+                ...corrected,
+                version: 3,
+                sourceId: 'src_syntheticrollback001',
+                provenanceId: 'prv_syntheticrollback001',
+              },
+              provenance: {
+                id: 'prv_syntheticrollback001',
+                userId: observation.userId,
+                sourceType: 'manual',
+                sourceId: 'src_syntheticrollback001',
+                transformationRef: null,
+                recordedAt: correctedAt,
+                createdAt: correctedAt,
+              },
+              audit: {
+                id: 'aud_syntheticrollback0001',
+                requestId: 'invalid-request-id',
+                retentionPolicyRef: 'synthetic-retention-review-ref',
+                occurredAt: correctedAt,
+              },
+            }),
+          ).rejects.toThrow();
+          await expect(
+            ready.observations.findCurrent(observation.id, observation.userId),
+          ).resolves.toMatchObject({ version: 2 });
+          expect(
+            (
+              await client.query(
+                `SELECT count(*)::integer AS count FROM health.provenance_records
+                 WHERE id = $1`,
+                ['prv_syntheticrollback001'],
+              )
+            ).rows[0].count,
+          ).toBe(0);
         } finally {
           await client.end();
         }
