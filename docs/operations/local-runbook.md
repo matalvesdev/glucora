@@ -20,6 +20,12 @@ Application rollback uses the preceding build; keep the ledger. Schema correctio
 Disposable integration tests create their own database and drop only that exact database.
 Before health data is admitted, H must deliver backup scheduling, isolated restore drill, RPO/RTO, incident owners and release approval. No production backup/restore claim is made by this foundation.
 
+## Backup and restore drill
+
+With the Compose database healthy and migrated, run `pnpm db:restore-drill`. The script creates a PostgreSQL custom-format dump under ignored `.local/backups`, calculates SHA-256, restores into a uniquely named isolated database, verifies the migration ledger and critical schemas, then drops only that validated restore database. It emits a non-sensitive JSON manifest with checksum, migration count, duration and restore result.
+
+The script never drops or replaces `glucora`. A failed restore exits nonzero and CI retains failure evidence. Do not upload dump files: even encrypted infrastructure transport does not make application health data suitable for CI artifacts. Production schedule, encrypted storage, retention, RPO/RTO and accountable owner remain required before beta because the cloud/storage/KMS choices are open.
+
 ## Native Windows validation environment
 
 When Docker is unavailable, PostgreSQL 17 binaries can run an isolated cluster in .local/pgdata on 127.0.0.1:55432.

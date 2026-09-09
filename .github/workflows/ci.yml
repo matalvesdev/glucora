@@ -35,6 +35,8 @@ jobs:
       - run: docker compose --env-file .env.local -f infrastructure/compose.yaml config --quiet
       - run: pnpm db:up
       - run: pnpm db:migrate
+      - name: Backup and isolated restore drill
+        run: pnpm db:restore-drill
       - name: PostgreSQL integration
         run: |
           set -a
@@ -50,5 +52,11 @@ jobs:
           name: playwright-failure
           path: test-results/
           retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: success()
+        with:
+          name: backup-restore-manifest
+          path: .local/backups/*.manifest.json
+          retention-days: 30
       - run: if test -f .env.local; then pnpm db:down; fi
         if: always()
