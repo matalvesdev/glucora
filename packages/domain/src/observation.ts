@@ -31,6 +31,27 @@ export interface QuantitativeObservation {
   readonly createdAt: string;
 }
 
+export interface ProvenanceRecord {
+  readonly id: string;
+  readonly userId: string;
+  readonly sourceType: ObservationSourceType;
+  readonly sourceId: string;
+  readonly transformationRef: string | null;
+  readonly recordedAt: string;
+  readonly createdAt: string;
+}
+
+export interface ObservationRepository {
+  recordInitial(
+    observation: QuantitativeObservation,
+    provenance: ProvenanceRecord,
+  ): Promise<QuantitativeObservation>;
+  findCurrent(
+    id: string,
+    userId: string,
+  ): Promise<QuantitativeObservation | null>;
+}
+
 export type ObservationValidationError =
   | 'invalid_id'
   | 'invalid_user_id'
