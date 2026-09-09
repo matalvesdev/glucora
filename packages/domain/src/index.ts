@@ -155,3 +155,4 @@ export * from './observation';
 export * from './context-event';
 export * from './timeline';
 export * from './consultation';
+export * from './privacy-request';
