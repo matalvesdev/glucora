@@ -34,3 +34,5 @@ C2/C4 em fundação: PostgreSQL e repository suportam gravação atômica de uma
 C5 em fundação: correção preserva a versão anterior, cria provenance e auditoria na mesma transação e bloqueia conflito de versão. ADR-019 permanece PROPOSED; o fluxo não está exposto ao usuário.
 
 C6–C8 em fundação: timezone IANA e offset são preservados e validados; catálogo de tipo/unidade é deny-by-default; consultas correntes usam ownership e paginação keyset. ADR-020 permanece PROPOSED; catálogo e API reais continuam bloqueados.
+
+C3 em fundação: eventos contextuais canônicos preservam categoria codificada, declaração controlada, provenance, timezone e versão. O catálogo é injetado e deny-by-default; categorias reais, correções e API aguardam gates. ADR-021 permanece PROPOSED.

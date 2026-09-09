@@ -152,3 +152,4 @@ export interface AuditRepository {
 }
 
 export * from './observation';
+export * from './context-event';

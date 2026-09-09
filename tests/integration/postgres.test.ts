@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(6);
+        ).toBe(7);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -60,8 +60,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0006_observation_timezone.sql'),
           join(directory, '0006_observation_timezone.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0007_context_events.sql'),
+          join(directory, '0007_context_events.sql'),
+        );
         await writeFile(
-          join(directory, '0007_failure.sql'),
+          join(directory, '0008_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
