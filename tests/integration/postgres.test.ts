@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(11);
+        ).toBe(12);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -82,8 +82,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           ),
           join(directory, '0011_privacy_request_transition_guard.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0012_share_grants.sql'),
+          join(directory, '0012_share_grants.sql'),
+        );
         await writeFile(
-          join(directory, '0012_failure.sql'),
+          join(directory, '0013_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -349,6 +353,58 @@ describe('real PostgreSQL migrations and readiness', () => {
             occurredAt: new Date().toISOString(),
           });
           expect(granted.decision).toBe('granted');
+          const share = await ready.shareGrants.create(
+            {
+              id: 'shr_syntheticshare000001',
+              ownerUserId: 'usr_syntheticconsumer001',
+              recipientRef: 'rcp_syntheticrecipient01',
+              resourceType: 'consultation_report',
+              resourceId: report.id,
+              purposeVersionId: 'pur_syntheticpurpose001',
+              status: 'active',
+              version: 1,
+              grantedAt: '2026-01-06T00:00:00.000Z',
+              expiresAt: '2026-01-13T00:00:00.000Z',
+              revokedAt: null,
+            },
+            {
+              id: 'aud_syntheticshare000001',
+              requestId: '4d185911-e08a-40cb-bc9f-0ea04c33be7f',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-06T00:00:00.000Z',
+            },
+          );
+          expect(share.status).toBe('active');
+          await expect(
+            ready.shareGrants.findById(share.id, 'usr_syntheticconsumer002'),
+          ).resolves.toBeNull();
+          const revokedShare = await ready.shareGrants.revoke(
+            share.id,
+            share.ownerUserId,
+            1,
+            '2026-01-07T00:00:00.000Z',
+            {
+              id: 'aud_syntheticshare000002',
+              requestId: 'ed1d625d-47bf-42a8-8e56-444bb93fa287',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-07T00:00:00.000Z',
+            },
+          );
+          expect(revokedShare).toMatchObject({ status: 'revoked', version: 2 });
+          await expect(
+            ready.shareGrants.revoke(
+              share.id,
+              share.ownerUserId,
+              1,
+              '2026-01-08T00:00:00.000Z',
+              {
+                id: 'aud_syntheticshare000003',
+                requestId: '2f491ef2-b5ac-4624-8525-cc24a2529a98',
+                retentionPolicyRef: 'synthetic-retention-review-ref',
+                occurredAt: '2026-01-08T00:00:00.000Z',
+              },
+            ),
+          ).rejects.toThrow('revocation conflict');
           await expect(
             ready.consents.record({
               id: granted.id,
