@@ -40,3 +40,5 @@ C3 em fundação: eventos contextuais canônicos preservam categoria codificada,
 Iniciativa D iniciada: D1/D5 possuem projeção cronológica descartável e rebuild transacional por usuário, com referências de origem/versão e sem payload clínico. D2–D4 e D6–D7 continuam pendentes; ADR-022 permanece PROPOSED.
 
 D2–D4/D7 em fundação interna: leitura exige autorização completa antes do repository, suporta filtros limitados por período/categoria/origem, agrupamento pelo dia local e estado vazio que não interpreta ausência como evento negativo. A API pública e a UX aguardam finalidade real e critérios de aceite aprovados.
+
+Iniciativa E iniciada: E1–E3 possuem composição determinística interna de inventário por período, categoria e origem, sempre acompanhada de limitações explícitas. O registro de risco propõe R0; persistência, perguntas, exportação, compartilhamento e exposição aguardam gates.
