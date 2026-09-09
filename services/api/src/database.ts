@@ -6,6 +6,7 @@ import { createPostgresObservationRepository } from './modules/measurements/obse
 import { createPostgresTimelineRepository } from './modules/timeline/timeline-repository';
 import { createPostgresConsultationReportRepository } from './modules/consultation/consultation-report-repository';
 import { createPostgresPrivacyRequestRepository } from './modules/privacy/privacy-request-repository';
+import { createPostgresShareGrantRepository } from './modules/sharing/share-grant-repository';
 export function createDatabase(connectionString: string) {
   const pool = new pg.Pool({
     connectionString,
@@ -25,6 +26,7 @@ export function createDatabase(connectionString: string) {
   const timeline = createPostgresTimelineRepository(pool);
   const consultationReports = createPostgresConsultationReportRepository(pool);
   const privacyRequests = createPostgresPrivacyRequestRepository(pool);
+  const shareGrants = createPostgresShareGrantRepository(pool);
   return {
     async checkReadiness() {
       const result = await pool.query<{ version: string }>(
@@ -40,5 +42,6 @@ export function createDatabase(connectionString: string) {
     timeline,
     consultationReports,
     privacyRequests,
+    shareGrants,
   };
 }
