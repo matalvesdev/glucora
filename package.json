@@ -26,7 +26,8 @@
     "env:init": "node scripts/init-env.mjs",
     "openapi:generate": "tsx scripts/openapi.ts --write",
     "openapi:check": "tsx scripts/openapi.ts",
-    "security:secrets": "node scripts/check-secrets.mjs"
+    "security:secrets": "node scripts/check-secrets.mjs",
+    "db:restore-drill": "bash scripts/backup-restore-drill.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
