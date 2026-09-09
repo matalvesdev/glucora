@@ -17,6 +17,8 @@ interface ObservationRow {
   unit_system: string;
   unit_code: string;
   occurred_at: Date;
+  observed_timezone: string;
+  utc_offset_minutes: number;
   recorded_at: Date;
   ingested_at: Date;
   source_type: QuantitativeObservation['sourceType'];
@@ -28,7 +30,8 @@ interface ObservationRow {
 }
 
 const columns = `id, version, user_id, type_system, type_code, decimal_value::text,
-  unit_system, unit_code, occurred_at, recorded_at, ingested_at, source_type,
+  unit_system, unit_code, occurred_at, observed_timezone, utc_offset_minutes,
+  recorded_at, ingested_at, source_type,
   source_id, provenance_id, fact_class, status, created_at`;
 
 function map(row: ObservationRow): QuantitativeObservation {
@@ -42,6 +45,8 @@ function map(row: ObservationRow): QuantitativeObservation {
       unit: { system: row.unit_system, code: row.unit_code },
     },
     occurredAt: row.occurred_at.toISOString(),
+    observedTimezone: row.observed_timezone,
+    utcOffsetMinutes: row.utc_offset_minutes,
     recordedAt: row.recorded_at.toISOString(),
     ingestedAt: row.ingested_at.toISOString(),
     sourceType: row.source_type,
@@ -94,9 +99,10 @@ export function createPostgresObservationRepository(
         const result = await client.query<ObservationRow>(
           `INSERT INTO health.observations
             (id, version, user_id, type_system, type_code, decimal_value, unit_system,
-             unit_code, occurred_at, recorded_at, ingested_at, source_type, source_id,
+             unit_code, occurred_at, observed_timezone, utc_offset_minutes,
+             recorded_at, ingested_at, source_type, source_id,
              provenance_id, fact_class, status, created_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
            RETURNING ${columns}`,
           [
             observation.id,
@@ -108,6 +114,8 @@ export function createPostgresObservationRepository(
             observation.quantity.unit.system,
             observation.quantity.unit.code,
             observation.occurredAt,
+            observation.observedTimezone,
+            observation.utcOffsetMinutes,
             observation.recordedAt,
             observation.ingestedAt,
             observation.sourceType,
@@ -134,6 +142,27 @@ export function createPostgresObservationRepository(
         [id, userId],
       );
       return result.rows[0] ? map(result.rows[0]) : null;
+    },
+    async listCurrent(userId, query) {
+      if (
+        !Number.isInteger(query.limit) ||
+        query.limit < 1 ||
+        query.limit > 100
+      )
+        throw new Error('Invalid observation page limit');
+      const values: unknown[] = [userId, query.limit];
+      let cursor = '';
+      if (query.before) {
+        values.push(query.before.occurredAt, query.before.id);
+        cursor = 'AND (occurred_at, id) < ($3::timestamptz, $4::text)';
+      }
+      const result = await pool.query<ObservationRow>(
+        `SELECT ${columns} FROM health.observations
+         WHERE user_id = $1 AND status = 'current' ${cursor}
+         ORDER BY occurred_at DESC, id DESC LIMIT $2`,
+        values,
+      );
+      return result.rows.map(map);
     },
     async correct({ replacement, provenance, audit }) {
       const validation = validateQuantitativeObservation(replacement);
@@ -169,9 +198,10 @@ export function createPostgresObservationRepository(
         const result = await client.query<ObservationRow>(
           `INSERT INTO health.observations
             (id, version, user_id, type_system, type_code, decimal_value, unit_system,
-             unit_code, occurred_at, recorded_at, ingested_at, source_type, source_id,
+             unit_code, occurred_at, observed_timezone, utc_offset_minutes,
+             recorded_at, ingested_at, source_type, source_id,
              provenance_id, fact_class, status, created_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
            RETURNING ${columns}`,
           [
             replacement.id,
@@ -183,6 +213,8 @@ export function createPostgresObservationRepository(
             replacement.quantity.unit.system,
             replacement.quantity.unit.code,
             replacement.occurredAt,
+            replacement.observedTimezone,
+            replacement.utcOffsetMinutes,
             replacement.recordedAt,
             replacement.ingestedAt,
             replacement.sourceType,

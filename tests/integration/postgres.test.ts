@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(5);
+        ).toBe(6);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -56,8 +56,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0005_observation_persistence.sql'),
           join(directory, '0005_observation_persistence.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0006_observation_timezone.sql'),
+          join(directory, '0006_observation_timezone.sql'),
+        );
         await writeFile(
-          join(directory, '0006_failure.sql'),
+          join(directory, '0007_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -232,6 +236,8 @@ describe('real PostgreSQL migrations and readiness', () => {
                 unit: { system: 'synthetic.units', code: 'unit' },
               },
               occurredAt: timestamp,
+              observedTimezone: 'America/Sao_Paulo',
+              utcOffsetMinutes: -180,
               recordedAt: timestamp,
               ingestedAt: timestamp,
               sourceType: 'manual',
@@ -261,6 +267,21 @@ describe('real PostgreSQL migrations and readiness', () => {
               'usr_syntheticconsumer002',
             ),
           ).resolves.toBeNull();
+          await expect(
+            ready.observations.listCurrent(observation.userId, { limit: 10 }),
+          ).resolves.toMatchObject([{ id: observation.id }]);
+          await expect(
+            ready.observations.listCurrent(observation.userId, {
+              limit: 10,
+              before: {
+                occurredAt: observation.occurredAt,
+                id: observation.id,
+              },
+            }),
+          ).resolves.toEqual([]);
+          await expect(
+            ready.observations.listCurrent(observation.userId, { limit: 0 }),
+          ).rejects.toThrow('page limit');
           await client.query(
             `INSERT INTO identity.user_accounts (id) VALUES ($1)`,
             ['usr_syntheticconsumer002'],
@@ -269,10 +290,12 @@ describe('real PostgreSQL migrations and readiness', () => {
             client.query(
               `INSERT INTO health.observations
                 (id, version, user_id, type_system, type_code, decimal_value,
-                 unit_system, unit_code, occurred_at, recorded_at, ingested_at,
+                 unit_system, unit_code, occurred_at, observed_timezone,
+                 utc_offset_minutes, recorded_at, ingested_at,
                  source_type, source_id, provenance_id, fact_class, status, created_at)
                SELECT $1, version, $2, type_system, type_code, decimal_value,
-                 unit_system, unit_code, occurred_at, recorded_at, ingested_at,
+                 unit_system, unit_code, occurred_at, observed_timezone,
+                 utc_offset_minutes, recorded_at, ingested_at,
                  source_type, source_id, provenance_id, fact_class, status, created_at
                FROM health.observations WHERE id = $3`,
               [
