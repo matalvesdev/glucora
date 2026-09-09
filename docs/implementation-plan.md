@@ -50,3 +50,5 @@ Iniciativa G iniciada: G1/G3/G7 possuem domínio e schema de workflow para solic
 G1/G3/G7 em backend: repository cria solicitações com idempotência e avança estados com controle de versão; estado, evento e auditoria são atômicos. PostgreSQL também impede transições inválidas e exclusão direta. Fulfillment e exposição continuam bloqueados.
 
 E6/G5 em fundação: grants limitam acesso a um relatório, destinatário opaco, finalidade e validade; autorização é deny-by-default e revogação versionada. ADR-025 permanece PROPOSED; delivery e identidade do destinatário continuam abertos.
+
+Iniciativa F iniciada: F1/F2/F6/F9 possuem registry e gateway provider-neutral com pipeline fail-closed de risco → auth/consent → evidência → provider → schema → guard → fallback. ADR-026 permanece PROPOSED; nenhuma capability real está ativa.
