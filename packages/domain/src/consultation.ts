@@ -28,6 +28,34 @@ export type ConsultationSummaryResult =
         'invalid_period' | 'item_outside_period' | 'invalid_generated_at';
     };
 
+export interface ConsultationReport {
+  readonly id: string;
+  readonly userId: string;
+  readonly summary: ConsultationSummary;
+  readonly sourceRefs: readonly {
+    readonly timelineItemId: string;
+    readonly sourceVersion: number;
+  }[];
+  readonly createdAt: string;
+}
+
+export interface CreateConsultationReport {
+  readonly report: ConsultationReport;
+  readonly idempotencyKey: string;
+  readonly requestHash: string;
+  readonly audit: {
+    readonly id: string;
+    readonly requestId: string;
+    readonly retentionPolicyRef: string;
+    readonly occurredAt: string;
+  };
+}
+
+export interface ConsultationReportRepository {
+  create(input: CreateConsultationReport): Promise<ConsultationReport>;
+  findById(id: string, userId: string): Promise<ConsultationReport | null>;
+}
+
 const utc = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const instant = (value: string) => {
   if (!utc.test(value)) return null;

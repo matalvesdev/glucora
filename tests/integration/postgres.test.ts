@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(8);
+        ).toBe(9);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -68,8 +68,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0008_timeline_projection.sql'),
           join(directory, '0008_timeline_projection.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0009_consultation_reports.sql'),
+          join(directory, '0009_consultation_reports.sql'),
+        );
         await writeFile(
-          join(directory, '0009_failure.sql'),
+          join(directory, '0010_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -143,6 +147,69 @@ describe('real PostgreSQL migrations and readiness', () => {
               '2026-01-02T00:00:00.000Z',
             ),
           ).resolves.toBe(1);
+          const projectedItems = await ready.timeline.list(
+            'usr_syntheticconsumer001',
+            { limit: 10 },
+          );
+          const reportInput = {
+            report: {
+              id: 'rpt_syntheticreport0001',
+              userId: 'usr_syntheticconsumer001',
+              summary: {
+                period: {
+                  from: '2026-01-01T00:00:00.000Z',
+                  to: '2026-01-03T00:00:00.000Z',
+                },
+                generatedAt: '2026-01-03T00:00:00.000Z',
+                totalRecords: 1,
+                countsByCategory: { 'synthetic.context|meal': 1 },
+                countsBySourceType: { manual: 1 },
+                limitations: [
+                  'summary_is_descriptive_only' as const,
+                  'missing_records_do_not_mean_events_did_not_happen' as const,
+                  'record_count_does_not_measure_health_or_control' as const,
+                ],
+              },
+              sourceRefs: [
+                {
+                  timelineItemId: projectedItems[0]!.id,
+                  sourceVersion: projectedItems[0]!.sourceVersion,
+                },
+              ],
+              createdAt: '2026-01-03T00:00:00.000Z',
+            },
+            idempotencyKey: 'synthetic-report-key-1',
+            requestHash: 'a'.repeat(64),
+            audit: {
+              id: 'aud_syntheticreport00001',
+              requestId: '762ecb91-a610-439b-983f-84c8d28dd3e7',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-03T00:00:00.000Z',
+            },
+          };
+          const report = await ready.consultationReports.create(reportInput);
+          expect(report.sourceRefs).toEqual(reportInput.report.sourceRefs);
+          await expect(
+            ready.consultationReports.create(reportInput),
+          ).resolves.toEqual(report);
+          await expect(
+            ready.consultationReports.create({
+              ...reportInput,
+              requestHash: 'b'.repeat(64),
+            }),
+          ).rejects.toThrow('Idempotency key reused');
+          await expect(
+            ready.consultationReports.findById(
+              report.id,
+              'usr_syntheticconsumer002',
+            ),
+          ).resolves.toBeNull();
+          await expect(
+            client.query(
+              `UPDATE consultation.reports SET total_records = 0 WHERE id = $1`,
+              [report.id],
+            ),
+          ).rejects.toThrow();
           await expect(
             ready.timeline.list('usr_syntheticconsumer001', { limit: 10 }),
           ).resolves.toMatchObject([
