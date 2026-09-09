@@ -1,7 +1,7 @@
 # Plano de implementação
 
 Referências: [13.8](source-of-truth/13-8.md), [13.12](source-of-truth/13-12.md), [11.9](source-of-truth/11-9.md).
-Escopo desta primeira execução: **Iniciativa A somente**.
+Escopo inicial concluído: **Iniciativa A**. As iniciativas seguintes avançam em slices condicionados aos respectivos gates.
 
 | Item | Implementação                                 | Evidência exigida                             |
 | ---- | --------------------------------------------- | --------------------------------------------- |
@@ -15,7 +15,7 @@ Escopo desta primeira execução: **Iniciativa A somente**.
 | A8   | CI, lockfile, scans                           | execução remota                               |
 | A9   | liveness independente e readiness real        | falha/recuperação PostgreSQL                  |
 
-Estado: A1–A9 implementados e validados localmente e no CI Linux; resultados em [validation.md](validation.md). O gate de governança permanece HOLD pela indisponibilidade de proteção de main no plano atual. Não avançar para B nesta execução.
+Estado: A1–A9 implementados e validados localmente e no CI Linux; resultados em [validation.md](validation.md). O gate de governança permanece HOLD pela indisponibilidade de proteção de main no plano atual.
 Gate de saída: clone → install → env → PostgreSQL → migrate → dev → checks reproduzíveis; pendências conhecidas registradas.
 A aprovação deste gate de engenharia não significa aprovação dos gates clínicos, privacidade, produto ou beta.
 
@@ -28,3 +28,5 @@ Iniciativa B em andamento: B1 concluído; B2 possui persistência mínima de con
 As demais iniciativas permanecem backlog documentado, sem tabelas ou endpoints especulativos.
 
 Iniciativa C iniciada: C1 possui núcleo de domínio para observações quantitativas com valor exato, unidade, tempos UTC, origem, provenance, classe factual, status e versão. Persistência, captura e catálogos clínicos continuam bloqueados até os gates aplicáveis; ADR-017 permanece PROPOSED.
+
+C2/C4 em fundação: PostgreSQL e repository suportam gravação atômica de uma observação inicial e sua provenance, sem endpoint ou catálogo clínico. ADR-018 permanece PROPOSED; captura real continua bloqueada.

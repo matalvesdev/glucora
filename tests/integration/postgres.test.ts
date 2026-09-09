@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(4);
+        ).toBe(5);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -52,8 +52,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0004_audit_events.sql'),
           join(directory, '0004_audit_events.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0005_observation_persistence.sql'),
+          join(directory, '0005_observation_persistence.sql'),
+        );
         await writeFile(
-          join(directory, '0005_failure.sql'),
+          join(directory, '0006_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -214,6 +218,80 @@ describe('real PostgreSQL migrations and readiness', () => {
             client.query(`DELETE FROM audit.events WHERE id = $1`, [
               'aud_syntheticauditevent01',
             ]),
+          ).rejects.toThrow();
+          const timestamp = new Date().toISOString();
+          const observation = await ready.observations.recordInitial(
+            {
+              id: 'obs_syntheticmeasure0001',
+              version: 1,
+              userId: 'usr_syntheticconsumer001',
+              type: { system: 'synthetic.test', code: 'measurement' },
+              quantity: {
+                decimalValue: '123.450000000',
+                unit: { system: 'synthetic.units', code: 'unit' },
+              },
+              occurredAt: timestamp,
+              recordedAt: timestamp,
+              ingestedAt: timestamp,
+              sourceType: 'manual',
+              sourceId: 'src_syntheticmanual001',
+              provenanceId: 'prv_syntheticorigin001',
+              factClass: 'declaration',
+              status: 'current',
+              createdAt: timestamp,
+            },
+            {
+              id: 'prv_syntheticorigin001',
+              userId: 'usr_syntheticconsumer001',
+              sourceType: 'manual',
+              sourceId: 'src_syntheticmanual001',
+              transformationRef: null,
+              recordedAt: timestamp,
+              createdAt: timestamp,
+            },
+          );
+          expect(observation.quantity.decimalValue).toBe('123.450000000');
+          await expect(
+            ready.observations.findCurrent(observation.id, observation.userId),
+          ).resolves.toMatchObject({ provenanceId: 'prv_syntheticorigin001' });
+          await expect(
+            ready.observations.findCurrent(
+              observation.id,
+              'usr_syntheticconsumer002',
+            ),
+          ).resolves.toBeNull();
+          await client.query(
+            `INSERT INTO identity.user_accounts (id) VALUES ($1)`,
+            ['usr_syntheticconsumer002'],
+          );
+          await expect(
+            client.query(
+              `INSERT INTO health.observations
+                (id, version, user_id, type_system, type_code, decimal_value,
+                 unit_system, unit_code, occurred_at, recorded_at, ingested_at,
+                 source_type, source_id, provenance_id, fact_class, status, created_at)
+               SELECT $1, version, $2, type_system, type_code, decimal_value,
+                 unit_system, unit_code, occurred_at, recorded_at, ingested_at,
+                 source_type, source_id, provenance_id, fact_class, status, created_at
+               FROM health.observations WHERE id = $3`,
+              [
+                'obs_syntheticcrossuser01',
+                'usr_syntheticconsumer002',
+                observation.id,
+              ],
+            ),
+          ).rejects.toThrow();
+          await expect(
+            client.query(
+              `UPDATE health.provenance_records SET source_id = $1 WHERE id = $2`,
+              ['src_syntheticchanged001', 'prv_syntheticorigin001'],
+            ),
+          ).rejects.toThrow();
+          await expect(
+            client.query(
+              `UPDATE health.observations SET decimal_value = 1 WHERE id = $1`,
+              [observation.id],
+            ),
           ).rejects.toThrow();
         } finally {
           await client.end();
