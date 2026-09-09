@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  evaluateObservationCatalog,
   validateQuantitativeObservation,
   type QuantitativeObservation,
 } from '../packages/domain/src/index';
@@ -13,6 +14,8 @@ const valid: QuantitativeObservation = {
     unit: { system: 'synthetic.units', code: 'unit' },
   },
   occurredAt: '2026-01-01T10:00:00.000Z',
+  observedTimezone: 'America/Sao_Paulo',
+  utcOffsetMinutes: -180,
   recordedAt: '2026-01-01T10:01:00.000Z',
   ingestedAt: '2026-01-01T10:02:00.000Z',
   sourceType: 'manual',
@@ -65,6 +68,8 @@ describe('quantitative observation domain', () => {
       { recordedAt: '2026-01-01T09:59:00.000Z' },
       'invalid_temporal_order',
     ],
+    ['timezone offset', { utcOffsetMinutes: 0 }, 'invalid_timezone'],
+    ['IANA timezone', { observedTimezone: 'unknown' }, 'invalid_timezone'],
     ['source reference', { sourceId: 'manual' }, 'invalid_source_id'],
     [
       'source type',
@@ -101,5 +106,17 @@ describe('quantitative observation domain', () => {
       ok: false,
       errors: ['invalid_decimal'],
     });
+  });
+
+  it('denies combinations absent from the injected type and unit catalog', () => {
+    expect(
+      evaluateObservationCatalog(valid, { supports: () => false }),
+    ).toEqual({ allowed: false, reason: 'unsupported_type_or_unit' });
+    expect(
+      evaluateObservationCatalog(valid, {
+        supports: (type, unit) =>
+          type.code === 'measurement' && unit.code === 'unit',
+      }),
+    ).toEqual({ allowed: true });
   });
 });

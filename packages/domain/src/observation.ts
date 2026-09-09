@@ -20,6 +20,8 @@ export interface QuantitativeObservation {
   readonly type: Coding;
   readonly quantity: Quantity;
   readonly occurredAt: string;
+  readonly observedTimezone: string;
+  readonly utcOffsetMinutes: number;
   readonly recordedAt: string;
   readonly ingestedAt: string;
   readonly sourceType: ObservationSourceType;
@@ -51,6 +53,32 @@ export interface ObservationRepository {
     userId: string,
   ): Promise<QuantitativeObservation | null>;
   correct(input: ObservationCorrection): Promise<QuantitativeObservation>;
+  listCurrent(
+    userId: string,
+    query: ObservationListQuery,
+  ): Promise<readonly QuantitativeObservation[]>;
+}
+
+export interface ObservationListQuery {
+  readonly limit: number;
+  readonly before?: { readonly occurredAt: string; readonly id: string };
+}
+
+export interface ObservationCatalog {
+  supports(type: Coding, unit: Coding): boolean;
+}
+
+export type CatalogDecision =
+  | { readonly allowed: true }
+  | { readonly allowed: false; readonly reason: 'unsupported_type_or_unit' };
+
+export function evaluateObservationCatalog(
+  observation: QuantitativeObservation,
+  catalog: ObservationCatalog,
+): CatalogDecision {
+  return catalog.supports(observation.type, observation.quantity.unit)
+    ? { allowed: true }
+    : { allowed: false, reason: 'unsupported_type_or_unit' };
 }
 
 export interface ObservationCorrection {
@@ -71,6 +99,7 @@ export type ObservationValidationError =
   | 'invalid_decimal'
   | 'invalid_timestamp'
   | 'invalid_temporal_order'
+  | 'invalid_timezone'
   | 'invalid_source_id'
   | 'invalid_source_type'
   | 'invalid_provenance_id'
@@ -100,6 +129,24 @@ function timestamp(value: string): number | null {
   return Number.isFinite(parsed) && new Date(parsed).toISOString() === value
     ? parsed
     : null;
+}
+
+function offsetFor(timestampValue: string, timeZone: string): number | null {
+  try {
+    const name = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'longOffset',
+    })
+      .formatToParts(new Date(timestampValue))
+      .find((part) => part.type === 'timeZoneName')?.value;
+    if (name === 'GMT') return 0;
+    const match = /^GMT([+-])(\d{2}):(\d{2})$/.exec(name ?? '');
+    if (!match) return null;
+    const minutes = Number(match[2]) * 60 + Number(match[3]);
+    return match[1] === '-' ? -minutes : minutes;
+  } catch {
+    return null;
+  }
 }
 
 export function validateQuantitativeObservation(
@@ -133,6 +180,12 @@ export function validateQuantitativeObservation(
   ) {
     errors.add('invalid_temporal_order');
   }
+  if (
+    !Number.isInteger(candidate.utcOffsetMinutes) ||
+    offsetFor(candidate.occurredAt, candidate.observedTimezone) !==
+      candidate.utcOffsetMinutes
+  )
+    errors.add('invalid_timezone');
 
   if (!opaqueId.test(candidate.sourceId)) errors.add('invalid_source_id');
   if (!['manual', 'imported', 'derived'].includes(candidate.sourceType))
