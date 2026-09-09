@@ -87,6 +87,18 @@ export function createPostgresTimelineRepository(
         values.push(query.sourceKind);
         filters += ` AND source_kind = $${values.length}`;
       }
+      if (query.category) {
+        values.push(query.category.system, query.category.code);
+        filters += ` AND category_system = $${values.length - 1} AND category_code = $${values.length}`;
+      }
+      if (query.occurredFrom) {
+        values.push(query.occurredFrom);
+        filters += ` AND occurred_at >= $${values.length}::timestamptz`;
+      }
+      if (query.occurredTo) {
+        values.push(query.occurredTo);
+        filters += ` AND occurred_at < $${values.length}::timestamptz`;
+      }
       if (query.before) {
         values.push(query.before.occurredAt, query.before.id);
         filters += ` AND (occurred_at, id) < ($${values.length - 1}::timestamptz, $${values.length})`;
