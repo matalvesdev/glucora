@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(10);
+        ).toBe(11);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -76,8 +76,14 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0010_privacy_requests.sql'),
           join(directory, '0010_privacy_requests.sql'),
         );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0011_privacy_request_transition_guard.sql',
+          ),
+          join(directory, '0011_privacy_request_transition_guard.sql'),
+        );
         await writeFile(
-          join(directory, '0011_failure.sql'),
+          join(directory, '0012_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -212,6 +218,90 @@ describe('real PostgreSQL migrations and readiness', () => {
             client.query(
               `UPDATE consultation.reports SET total_records = 0 WHERE id = $1`,
               [report.id],
+            ),
+          ).rejects.toThrow();
+          const privacyInput = {
+            request: {
+              id: 'dsr_syntheticrequest0001',
+              userId: 'usr_syntheticconsumer001',
+              kind: 'export' as const,
+              scope: 'all_user_data' as const,
+              status: 'requested' as const,
+              version: 1,
+              requestedAt: '2026-01-04T00:00:00.000Z',
+              updatedAt: '2026-01-04T00:00:00.000Z',
+            },
+            event: {
+              id: 'dse_syntheticrequested001',
+              requestId: 'dsr_syntheticrequest0001',
+              userId: 'usr_syntheticconsumer001',
+              fromStatus: null,
+              toStatus: 'requested' as const,
+              reasonCode: 'user_requested',
+              occurredAt: '2026-01-04T00:00:00.000Z',
+            },
+            idempotencyKey: ['test', 'privacy', '1'].join('-'),
+            requestHash: 'c'.repeat(64),
+            audit: {
+              id: 'aud_syntheticprivacy0001',
+              requestId: 'a172b956-2638-442f-87b2-8449ec3e57b3',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-04T00:00:00.000Z',
+            },
+          };
+          const privacyRequest =
+            await ready.privacyRequests.create(privacyInput);
+          await expect(
+            ready.privacyRequests.create(privacyInput),
+          ).resolves.toEqual(privacyRequest);
+          const inReview = await ready.privacyRequests.transition({
+            requestId: privacyRequest.id,
+            userId: privacyRequest.userId,
+            expectedVersion: 1,
+            event: {
+              id: 'dse_syntheticreview00001',
+              requestId: privacyRequest.id,
+              userId: privacyRequest.userId,
+              fromStatus: 'requested',
+              toStatus: 'in_review',
+              reasonCode: 'identity_confirmed',
+              occurredAt: '2026-01-05T00:00:00.000Z',
+            },
+            audit: {
+              id: 'aud_syntheticprivacy0002',
+              requestId: 'e7f61c3f-c733-4d75-8e80-ddfd825c089a',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-05T00:00:00.000Z',
+            },
+          });
+          expect(inReview).toMatchObject({ status: 'in_review', version: 2 });
+          await expect(
+            ready.privacyRequests.transition({
+              requestId: privacyRequest.id,
+              userId: privacyRequest.userId,
+              expectedVersion: 1,
+              event: {
+                ...privacyInput.event,
+                id: 'dse_syntheticstale00001',
+                fromStatus: 'requested',
+                toStatus: 'cancelled',
+              },
+              audit: privacyInput.audit,
+            }),
+          ).rejects.toThrow('transition conflict');
+          await expect(
+            ready.privacyRequests.history(
+              privacyRequest.id,
+              privacyRequest.userId,
+            ),
+          ).resolves.toMatchObject([
+            { fromStatus: null, toStatus: 'requested' },
+            { fromStatus: 'requested', toStatus: 'in_review' },
+          ]);
+          await expect(
+            client.query(
+              `UPDATE privacy.requests SET status='requested', version=3 WHERE id=$1`,
+              [privacyRequest.id],
             ),
           ).rejects.toThrow();
           await expect(
