@@ -5,14 +5,20 @@ import helmet from '@fastify/helmet';
 import { HealthSchema, ErrorSchema } from '@glucora/contracts';
 import { MeSchema } from '@glucora/contracts';
 import type { IdentityPort, UserAccountRepository } from '@glucora/domain';
-import { createLogger } from '@glucora/observability';
+import {
+  createLogger,
+  createNoopMetricSink,
+  type MetricSink,
+} from '@glucora/observability';
 export interface AppDependencies {
   checkReadiness: () => Promise<void>;
   identity?: IdentityPort<import('fastify').FastifyRequest>;
   users?: UserAccountRepository;
   logger?: ReturnType<typeof createLogger>;
+  metrics?: MetricSink;
 }
 export function buildApp(deps: AppDependencies) {
+  const metrics = deps.metrics ?? createNoopMetricSink();
   const app = Fastify({
     loggerInstance: deps.logger ?? createLogger(),
     logController: new LogController({
@@ -37,6 +43,12 @@ export function buildApp(deps: AppDependencies) {
       .header('cache-control', 'no-store');
   });
   app.addHook('onResponse', async (request, reply) => {
+    metrics.recordHttpRequest({
+      method: request.method,
+      route: request.routeOptions.url ?? 'unmatched',
+      statusCode: reply.statusCode,
+      durationMs: Math.round(reply.elapsedTime),
+    });
     request.log.info(
       {
         event: 'http_request_completed',
@@ -94,6 +106,7 @@ export function buildApp(deps: AppDependencies) {
           await deps.checkReadiness();
           return { status: 'ok' as const, request_id: request.id };
         } catch {
+          metrics.recordReadinessFailure();
           return reply.code(503).send({
             code: 'NOT_READY',
             message: 'Serviço temporariamente indisponível.',

@@ -50,6 +50,32 @@ describe('foundation HTTP contract and privacy', () => {
     expect(Value.Check(ErrorSchema, response.json())).toBe(true);
     expect(response.body).not.toContain('secret');
   });
+  it('emits bounded operational signals without request content', async () => {
+    const records: unknown[] = [];
+    let readinessFailures = 0;
+    const logs = captureLogs();
+    const app = buildApp({
+      checkReadiness: async () => {
+        throw new Error('synthetic-sensitive-detail');
+      },
+      logger: createLogger('info', logs.stream),
+      metrics: {
+        recordHttpRequest: (metric) => records.push(metric),
+        recordReadinessFailure: () => readinessFailures++,
+      },
+    });
+    apps.push(app);
+    await app.inject({
+      method: 'GET',
+      url: '/v1/ready?note=synthetic-sensitive-detail',
+      headers: { authorization: 'synthetic-sensitive-detail' },
+    });
+    expect(readinessFailures).toBe(1);
+    expect(records).toMatchObject([
+      { method: 'GET', route: '/v1/ready', statusCode: 503 },
+    ]);
+    expect(JSON.stringify(records)).not.toContain('synthetic-sensitive-detail');
+  });
   it('does not expose unimplemented health data capabilities', async () => {
     const { app } = setup();
     for (const url of ['/v1/observations', '/v1/consents', '/v1/chat'])

@@ -21,3 +21,19 @@ export function createLogger(level = 'info', stream?: DestinationStream) {
   };
   return stream ? pino(options, stream) : pino(options);
 }
+
+export interface HttpMetric {
+  readonly method: string;
+  readonly route: string;
+  readonly statusCode: number;
+  readonly durationMs: number;
+}
+
+export interface MetricSink {
+  recordHttpRequest(metric: HttpMetric): void;
+  recordReadinessFailure(): void;
+}
+
+export function createNoopMetricSink(): MetricSink {
+  return { recordHttpRequest: () => {}, recordReadinessFailure: () => {} };
+}

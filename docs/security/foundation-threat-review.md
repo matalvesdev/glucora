@@ -15,3 +15,12 @@ Scope: public availability probes and a static shell; no health data storage, id
 ## Identity persistence extension
 
 The application now resolves an authenticated opaque actor against `identity.user_accounts`. Authentication alone is insufficient: missing or disabled records receive a generic denial. The table stores no credentials, email or health information. Parameterized lookup prevents identifier injection, and responses/logs do not disclose whether another account exists. Production identity, account provisioning, session revocation and privileged roles remain open.
+
+## Longitudinal, sharing, privacy and AI extensions
+
+- Canonical health records are user-scoped, versioned and provenance-linked; direct destructive mutation is blocked. Primary threats remain purpose misconfiguration, compromised consumer sessions and privileged database access.
+- Timeline is disposable and contains references/metadata rather than measurement values or free text. Rebuild uses a per-user lock. Projection staleness must remain visible before user exposure.
+- Report sharing is bound to one owner-owned artifact, opaque recipient, purpose and expiry. Revocation is checked for every future access. Recipient authentication and delivery links remain unimplemented because token leakage, forwarding and enumeration need a dedicated design/review.
+- Privacy requests use scoped lookup, optimistic versions, controlled reason codes and atomic audit. Fulfillment cannot be marked complete until every applicable store/vendor reports evidence.
+- AI execution denies R2+, validates authorization before context/provider access, requires versioned evidence and structured guards, and abstains safely. Prompt injection, provider data use and corpus poisoning remain blocked from release until real adapters/corpora have threat review and eval evidence.
+- Operational metrics accept only method, route template, status, duration and readiness failure. Interfaces do not accept arbitrary labels, reducing accidental health data cardinality/leakage.
