@@ -5,6 +5,7 @@ import {
   type ProvenanceRecord,
   type QuantitativeObservation,
 } from '@glucora/domain';
+import { insertAuditEvent } from '../audit/audit-repository';
 
 interface ObservationRow {
   id: string;
@@ -133,6 +134,87 @@ export function createPostgresObservationRepository(
         [id, userId],
       );
       return result.rows[0] ? map(result.rows[0]) : null;
+    },
+    async correct({ replacement, provenance, audit }) {
+      const validation = validateQuantitativeObservation(replacement);
+      if (!validation.ok || replacement.status !== 'current')
+        throw new Error('Invalid replacement observation');
+      if (
+        provenance.id !== replacement.provenanceId ||
+        provenance.userId !== replacement.userId ||
+        provenance.sourceType !== replacement.sourceType ||
+        provenance.sourceId !== replacement.sourceId ||
+        provenance.recordedAt !== replacement.recordedAt ||
+        audit.occurredAt !== replacement.createdAt
+      )
+        throw new Error('Correction evidence does not match');
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const current = await client.query<ObservationRow>(
+          `SELECT ${columns} FROM health.observations
+           WHERE id = $1 AND user_id = $2 AND status = 'current' FOR UPDATE`,
+          [replacement.id, replacement.userId],
+        );
+        const previous = current.rows[0];
+        if (!previous || replacement.version !== previous.version + 1)
+          throw new Error('Observation correction conflict');
+        await client.query(
+          `UPDATE health.observations
+           SET status = 'superseded', superseded_at = $3
+           WHERE id = $1 AND version = $2`,
+          [replacement.id, previous.version, replacement.createdAt],
+        );
+        await insertProvenance(client, provenance);
+        const result = await client.query<ObservationRow>(
+          `INSERT INTO health.observations
+            (id, version, user_id, type_system, type_code, decimal_value, unit_system,
+             unit_code, occurred_at, recorded_at, ingested_at, source_type, source_id,
+             provenance_id, fact_class, status, created_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+           RETURNING ${columns}`,
+          [
+            replacement.id,
+            replacement.version,
+            replacement.userId,
+            replacement.type.system,
+            replacement.type.code,
+            replacement.quantity.decimalValue,
+            replacement.quantity.unit.system,
+            replacement.quantity.unit.code,
+            replacement.occurredAt,
+            replacement.recordedAt,
+            replacement.ingestedAt,
+            replacement.sourceType,
+            replacement.sourceId,
+            replacement.provenanceId,
+            replacement.factClass,
+            replacement.status,
+            replacement.createdAt,
+          ],
+        );
+        await insertAuditEvent(client, {
+          id: audit.id,
+          eventKey: 'observation.corrected',
+          actorType: 'consumer',
+          actorId: replacement.userId,
+          subjectId: replacement.userId,
+          resourceType: 'observation',
+          resourceId: replacement.id,
+          action: 'corrected',
+          outcome: 'succeeded',
+          requestId: audit.requestId,
+          retentionPolicyRef: audit.retentionPolicyRef,
+          occurredAt: audit.occurredAt,
+        });
+        await client.query('COMMIT');
+        return map(result.rows[0]!);
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
     },
   };
 }

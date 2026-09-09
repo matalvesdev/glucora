@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type {
   AuditEvent,
   AuditRepository,
@@ -39,35 +39,42 @@ function mapEvent(row: AuditEventRow): AuditEvent {
   };
 }
 
+export async function insertAuditEvent(
+  client: Pool | PoolClient,
+  input: RecordAuditEvent,
+): Promise<AuditEvent> {
+  const result = await client.query<AuditEventRow>(
+    `INSERT INTO audit.events
+       (id, event_key, actor_type, actor_id, subject_id, resource_type,
+        resource_id, action, outcome, request_id, retention_policy_ref, occurred_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     RETURNING id, event_key, actor_type, actor_id, subject_id, resource_type,
+               resource_id, action, outcome, request_id, retention_policy_ref,
+               occurred_at, recorded_at`,
+    [
+      input.id,
+      input.eventKey,
+      input.actorType,
+      input.actorId,
+      input.subjectId,
+      input.resourceType,
+      input.resourceId,
+      input.action,
+      input.outcome,
+      input.requestId,
+      input.retentionPolicyRef,
+      input.occurredAt,
+    ],
+  );
+  const row = result.rows[0];
+  if (!row) throw new Error('Audit event was not recorded');
+  return mapEvent(row);
+}
+
 export function createPostgresAuditRepository(pool: Pool): AuditRepository {
   return {
     async record(input: RecordAuditEvent): Promise<AuditEvent> {
-      const result = await pool.query<AuditEventRow>(
-        `INSERT INTO audit.events
-           (id, event_key, actor_type, actor_id, subject_id, resource_type,
-            resource_id, action, outcome, request_id, retention_policy_ref, occurred_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-         RETURNING id, event_key, actor_type, actor_id, subject_id, resource_type,
-                   resource_id, action, outcome, request_id, retention_policy_ref,
-                   occurred_at, recorded_at`,
-        [
-          input.id,
-          input.eventKey,
-          input.actorType,
-          input.actorId,
-          input.subjectId,
-          input.resourceType,
-          input.resourceId,
-          input.action,
-          input.outcome,
-          input.requestId,
-          input.retentionPolicyRef,
-          input.occurredAt,
-        ],
-      );
-      const row = result.rows[0];
-      if (!row) throw new Error('Audit event was not recorded');
-      return mapEvent(row);
+      return insertAuditEvent(pool, input);
     },
     async historyForResource(resourceType, resourceId): Promise<AuditEvent[]> {
       const result = await pool.query<AuditEventRow>(
