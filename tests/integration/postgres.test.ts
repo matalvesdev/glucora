@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(7);
+        ).toBe(8);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -64,8 +64,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0007_context_events.sql'),
           join(directory, '0007_context_events.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0008_timeline_projection.sql'),
+          join(directory, '0008_timeline_projection.sql'),
+        );
         await writeFile(
-          join(directory, '0008_failure.sql'),
+          join(directory, '0009_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -104,6 +108,57 @@ describe('real PostgreSQL migrations and readiness', () => {
           await expect(
             ready.users.findById('usr_missingconsumer000'),
           ).resolves.toBeNull();
+          const contextTime = '2026-01-01T10:00:00.000Z';
+          await client.query(
+            `INSERT INTO health.provenance_records
+              (id, user_id, source_type, source_id, recorded_at, created_at)
+             VALUES ($1, $2, 'manual', $3, $4, $4)`,
+            [
+              'prv_synthetictimeline001',
+              'usr_syntheticconsumer001',
+              'src_synthetictimeline001',
+              contextTime,
+            ],
+          );
+          await client.query(
+            `INSERT INTO health.context_events
+              (id, version, user_id, category_system, category_code, note,
+               occurred_at, observed_timezone, utc_offset_minutes, recorded_at,
+               ingested_at, source_type, source_id, provenance_id, fact_class,
+               status, created_at)
+             VALUES ($1, 1, $2, 'synthetic.context', 'meal', NULL, $3,
+               'America/Sao_Paulo', -180, $3, $3, 'manual', $4, $5,
+               'declaration', 'current', $3)`,
+            [
+              'ctx_synthetictimeline001',
+              'usr_syntheticconsumer001',
+              contextTime,
+              'src_synthetictimeline001',
+              'prv_synthetictimeline001',
+            ],
+          );
+          await expect(
+            ready.timeline.rebuild(
+              'usr_syntheticconsumer001',
+              '2026-01-02T00:00:00.000Z',
+            ),
+          ).resolves.toBe(1);
+          await expect(
+            ready.timeline.list('usr_syntheticconsumer001', { limit: 10 }),
+          ).resolves.toMatchObject([
+            {
+              sourceKind: 'context_event',
+              sourceId: 'ctx_synthetictimeline001',
+              category: { code: 'meal' },
+              factClass: 'declaration',
+            },
+          ]);
+          await expect(
+            ready.timeline.rebuild(
+              'usr_syntheticconsumer001',
+              '2026-01-03T00:00:00.000Z',
+            ),
+          ).resolves.toBe(1);
           await client.query(
             `INSERT INTO consent.purpose_versions
                (id, purpose_key, version, status, title, notice_text,

@@ -3,6 +3,7 @@ import { createPostgresUserAccountRepository } from './modules/identity/user-acc
 import { createPostgresConsentRepository } from './modules/consent/consent-repository';
 import { createPostgresAuditRepository } from './modules/audit/audit-repository';
 import { createPostgresObservationRepository } from './modules/measurements/observation-repository';
+import { createPostgresTimelineRepository } from './modules/timeline/timeline-repository';
 export function createDatabase(connectionString: string) {
   const pool = new pg.Pool({
     connectionString,
@@ -19,6 +20,7 @@ export function createDatabase(connectionString: string) {
   const consents = createPostgresConsentRepository(pool);
   const audit = createPostgresAuditRepository(pool);
   const observations = createPostgresObservationRepository(pool);
+  const timeline = createPostgresTimelineRepository(pool);
   return {
     async checkReadiness() {
       const result = await pool.query<{ version: string }>(
@@ -31,5 +33,6 @@ export function createDatabase(connectionString: string) {
     consents,
     audit,
     observations,
+    timeline,
   };
 }
