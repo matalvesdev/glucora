@@ -1,11 +1,11 @@
 # Glucora
 
-Fundação técnica do MVP, conforme Initiative A (A1–A9). Ainda não é um produto clínico nem uma versão beta.
+Fundação técnica do MVP, conforme a Source of Truth. A base A1–A9 e slices condicionais das iniciativas B–H estão implementados; o produto não deve ser apresentado como sistema clínico autônomo.
 
 ## Fontes e repositório
 
 - [Glucora — Source of Truth](https://drive.google.com/drive/folders/1GizzPqxv3WGLT2UnfmuIAu2LwFwq_l9-)
-- [Repositório privado](https://github.com/matalvesdev/glucora)
+- [Repositório público](https://github.com/matalvesdev/glucora)
 - [Plano e critérios de saída](docs/implementation-plan.md)
 - [Prompt master](docs/source-of-truth/13-9.md)
 
@@ -56,7 +56,11 @@ packages/domain: fronteira reservada para a Iniciativa B; infrastructure: Postgr
 
 ## Limites
 
-Autenticação, consentimento, registros, timeline e IA ainda não estão implementados.
-A API expõe somente probes; demais rotas retornam 404. A checagem de readiness exige banco e baseline de schema.
+O adapter de identidade local é exclusivo de desenvolvimento; autenticação e sessões de produção não foram selecionadas. A área de privacidade e suporte exige uma conta local ativa e só aceita operações condicionadas por políticas configuradas; ela não realiza verificação de identidade, fulfillment, triagem ou atendimento por operador.
+
+Os modelos de observação, contexto, timeline, relatórios, compartilhamento, IA e retenção têm fundações provider-neutral e fail-closed, mas captura clínica real, catálogo clínico aprovado, entrega de artefatos, identidade de destinatário, provider de IA e operação humana continuam dependentes das decisões documentadas no plano.
+
+O registro de readiness do beta privado está aprovado e a inscrição foi habilitada com evidências registradas. Isso não seleciona provedores de produção nem substitui os limites clínicos, de privacidade e de compliance da Source of Truth.
+
 PWA/offline e cache de dados sensíveis não foram habilitados. Cloud, identity provider e demais provedores continuam em aberto.
 Veja docs/operations/local-runbook.md para falha, encerramento e recuperação.
