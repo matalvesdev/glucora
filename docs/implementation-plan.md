@@ -66,3 +66,5 @@ F3/F7 em fundação: retrieval provider-neutral exige corpus versionado e metada
 H5 em fundação: solicitações de suporte do consumidor usam categoria controlada, idempotência, ownership e auditoria atômica, sem texto livre ou payload clínico. ADR-031 permanece PROPOSED; endpoint/UI, identidade de operador, triagem, SLA, paging e fornecedor continuam pendentes.
 
 G8 em fundação: orquestrador provider-neutral executa plano explícito de targets canonical, projection, vendor e backup, exige recibos com evidência e converte erros externos em códigos seguros. ADR-032 permanece PROPOSED; adapters, política de retenção, subprocessadores e transição final continuam pendentes.
+
+E5/G1 em fundação: gerador JSON estruturado aceita apenas pedido de exportação em revisão, agrega seções explícitas, preserva versões/provenance, bloqueia dados de outro titular e gera checksum determinístico. ADR-033 permanece PROPOSED; storage, criptografia, expiração, entrega, reautenticação e adapters reais continuam pendentes.
