@@ -71,7 +71,7 @@ E5/G1 em fundação: gerador JSON estruturado aceita apenas pedido de exportaç�
 
 G1/G3/G7 em API condicionada: POST/GET de solicitações de privacidade exigem autenticação, conta ativa, ownership, idempotência e validação runtime; o servidor deriva titular e estado. Sem referência explícita da política de retenção, novas criações são bloqueadas, mas status existente permanece legível. ADR-034 permanece PROPOSED; identidade/política de produção, UI, verificação e fulfillment continuam pendentes.
 
-H5 em API condicionada: POST/listagem de suporte exigem autenticação, conta ativa, idempotência, categoria controlada e ownership; texto livre e campos adicionais são rejeitados. Sem referência explícita de retenção, novas entradas são bloqueadas, mas registros existentes permanecem legíveis. ADR-035 permanece PROPOSED; roteamento, operador, triagem, SLA, paging e fornecedor continuam pendentes.
+H5 em API/UI condicionada: POST/listagem de suporte exigem autenticação, conta ativa, idempotência, categoria controlada e ownership; texto livre e campos adicionais são rejeitados. A interface lista os próprios pedidos e a atualiza após criação válida. Sem referência explícita de retenção, novas entradas são bloqueadas, mas registros existentes permanecem legíveis. ADR-035 permanece PROPOSED; roteamento, operador, triagem, SLA, paging e fornecedor continuam pendentes.
 
 G1/G3/G7/H5 em UI condicionada: a área de privacidade e suporte consulta sessão real antes de renderizar formulários; envia somente tipo/categoria e idempotência e valida respostas pelos contratos compartilhados. ADR-036 permanece PROPOSED; login de produção, histórico completo, consentimentos e operação de suporte continuam pendentes.
 

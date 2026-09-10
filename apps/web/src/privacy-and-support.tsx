@@ -6,6 +6,7 @@ import {
   PrivacyRequestSchema,
   PrivacyRequestListSchema,
   SupportRequestSchema,
+  SupportRequestListSchema,
 } from '@glucora/contracts';
 import { Button } from '@glucora/ui';
 
@@ -34,6 +35,18 @@ interface PrivacyRequestViewItem {
     | 'denied'
     | 'cancelled';
   requested_at: string;
+}
+interface SupportRequestViewItem {
+  id: string;
+  category:
+    | 'account_access'
+    | 'privacy_rights'
+    | 'data_quality'
+    | 'sharing'
+    | 'unsafe_output'
+    | 'technical_issue';
+  status: 'submitted';
+  created_at: string;
 }
 
 async function submitJson(url: string, body: unknown): Promise<Response> {
@@ -74,6 +87,12 @@ export function PrivacyAndSupport() {
   >('technical_issue');
   const [privacySubmit, setPrivacySubmit] = useState<SubmitState>('idle');
   const [supportSubmit, setSupportSubmit] = useState<SubmitState>('idle');
+  const [supportRequests, setSupportRequests] = useState<
+    readonly SupportRequestViewItem[]
+  >([]);
+  const [supportListState, setSupportListState] = useState<
+    'idle' | 'loading' | 'ready' | 'error'
+  >('idle');
   const [consentHistory, setConsentHistory] = useState<
     readonly ConsentHistoryViewItem[]
   >([]);
@@ -171,10 +190,30 @@ export function PrivacyAndSupport() {
     }
   }
 
+  async function loadSupportRequests() {
+    setSupportListState('loading');
+    try {
+      const response = await fetch('/v1/support-requests?limit=20', {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(SupportRequestListSchema, body)) {
+        setSupportListState('error');
+        return;
+      }
+      setSupportRequests((body as { items: SupportRequestViewItem[] }).items);
+      setSupportListState('ready');
+    } catch {
+      setSupportListState('error');
+    }
+  }
+
   useEffect(() => {
     if (access === 'authenticated') {
       void loadConsentHistory();
       void loadPrivacyRequests();
+      void loadSupportRequests();
     }
   }, [access]);
 
@@ -209,13 +248,16 @@ export function PrivacyAndSupport() {
         category: supportCategory,
       });
       const body: unknown = await response.json();
-      setSupportSubmit(
-        response.status === 503
-          ? 'unavailable'
-          : response.ok && Value.Check(SupportRequestSchema, body)
-            ? 'success'
-            : 'error',
-      );
+      if (response.status === 503) {
+        setSupportSubmit('unavailable');
+        return;
+      }
+      if (!response.ok || !Value.Check(SupportRequestSchema, body)) {
+        setSupportSubmit('error');
+        return;
+      }
+      setSupportSubmit('success');
+      await loadSupportRequests();
     } catch {
       setSupportSubmit('error');
     }
@@ -402,6 +444,59 @@ export function PrivacyAndSupport() {
                 </Button>
               ) : null}
             </div>
+          )}
+        </section>
+      ) : null}
+
+      {access === 'authenticated' ? (
+        <section className="mt-8 rounded-3xl border border-stone-200 bg-white p-7 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[.16em] text-teal-800">
+            Seus pedidos de suporte
+          </p>
+          <h2 className="mt-3 text-xl font-semibold">Pedidos enviados</h2>
+          {supportListState === 'error' ? (
+            <p className="mt-4 text-sm text-stone-600">
+              Não foi possível carregar seus pedidos agora.
+            </p>
+          ) : supportListState === 'loading' && supportRequests.length === 0 ? (
+            <p className="mt-4 text-sm text-stone-600">Carregando pedidos…</p>
+          ) : supportRequests.length === 0 ? (
+            <p className="mt-4 text-sm text-stone-600">
+              Nenhum pedido de suporte registrado.
+            </p>
+          ) : (
+            <ul className="mt-5 space-y-3">
+              {supportRequests.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 p-4"
+                >
+                  <div>
+                    <p className="font-semibold">
+                      {item.category === 'technical_issue'
+                        ? 'Problema técnico'
+                        : item.category === 'account_access'
+                          ? 'Acesso à conta'
+                          : item.category === 'privacy_rights'
+                            ? 'Privacidade e direitos'
+                            : item.category === 'data_quality'
+                              ? 'Qualidade dos dados'
+                              : item.category === 'sharing'
+                                ? 'Compartilhamento'
+                                : 'Conteúdo inadequado'}
+                    </p>
+                    <p className="mt-1 text-xs text-stone-500">
+                      {new Intl.DateTimeFormat('pt-BR', {
+                        dateStyle: 'medium',
+                      }).format(new Date(item.created_at))}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
+                    Recebido
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
       ) : null}

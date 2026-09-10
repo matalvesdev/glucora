@@ -65,6 +65,7 @@ test('authenticated user can submit minimized privacy and support requests', asy
 }) => {
   const payloads: unknown[] = [];
   let privacyListCalls = 0;
+  let supportListCalls = 0;
   await page.route('**/v1/me', (route) =>
     route.fulfill({
       status: 200,
@@ -169,6 +170,27 @@ test('authenticated user can submit minimized privacy and support requests', asy
       }),
     });
   });
+  await page.route('**/v1/support-requests?*', async (route) => {
+    supportListCalls += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items:
+          supportListCalls > 1
+            ? [
+                {
+                  id: 'sup_syntheticrequest0001',
+                  category: 'technical_issue',
+                  status: 'submitted',
+                  created_at: '2026-01-02T00:00:00.000Z',
+                },
+              ]
+            : [],
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    });
+  });
   await page.goto('/');
   await page.getByRole('button', { name: 'Privacidade e suporte' }).click();
   await expect(page.getByRole('status')).toContainText('Acesso verificado');
@@ -182,6 +204,17 @@ test('authenticated user can submit minimized privacy and support requests', asy
   await expect(page.getByText('Recebido')).toBeVisible();
   await page.getByRole('button', { name: 'Enviar pedido' }).click();
   await expect(page.getByText('Pedido de suporte registrado.')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Pedidos enviados' }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('section')
+      .filter({
+        has: page.getByRole('heading', { level: 2, name: 'Pedidos enviados' }),
+      })
+      .getByText('Problema técnico', { exact: true }),
+  ).toBeVisible();
   expect(payloads).toEqual([
     { kind: 'export' },
     { category: 'technical_issue' },
