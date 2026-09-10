@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "enrollment_enabled": false,
+  "enrollment_enabled": true,
   "gates": {
     "product": {
       "status": "PASS",
