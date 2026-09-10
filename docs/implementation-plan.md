@@ -56,3 +56,5 @@ Iniciativa F iniciada: F1/F2/F6/F9 possuem registry e gateway provider-neutral c
 Iniciativa H avançada: H2/H3 possuem backup custom-format, checksum e restore drill isolado no CI, com manifesto sem dados. ADR-027 permanece PROPOSED; schedule, storage/KMS, retenção, RPO/RTO e owner de produção continuam abertos.
 
 H1/H4/H7 em fundação: métricas HTTP/readiness possuem campos fechados sem payload sensível; runbook registra stop conditions, contenção, recuperação e evidência; threat model cobre os módulos adicionados. Exporter, alertas, paging, owners e SLAs continuam abertos.
+
+F8/G6 em fundação: contestação append-only por output/versão usa motivos controlados, ownership e auditoria atômica; recursos contestados podem ser excluídos de contexto futuro. ADR-028 permanece PROPOSED; resolução/SLA e `ai_runs` reais continuam pendentes.

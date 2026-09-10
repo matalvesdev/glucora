@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(12);
+        ).toBe(13);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -86,8 +86,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0012_share_grants.sql'),
           join(directory, '0012_share_grants.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0013_output_contestations.sql'),
+          join(directory, '0013_output_contestations.sql'),
+        );
         await writeFile(
-          join(directory, '0013_failure.sql'),
+          join(directory, '0014_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -222,6 +226,45 @@ describe('real PostgreSQL migrations and readiness', () => {
             client.query(
               `UPDATE consultation.reports SET total_records = 0 WHERE id = $1`,
               [report.id],
+            ),
+          ).rejects.toThrow();
+          const contestation = await ready.outputContestations.record(
+            {
+              id: 'fbk_syntheticcontest0001',
+              userId: 'usr_syntheticconsumer001',
+              resourceType: 'consultation_report',
+              resourceId: report.id,
+              resourceVersion: report.createdAt,
+              reason: 'missing_context',
+              status: 'open',
+              occurredAt: '2026-01-04T00:00:00.000Z',
+            },
+            {
+              id: 'aud_syntheticfeedback0001',
+              requestId: '9caab91a-b84e-4d30-8dd3-a7f777cb4bee',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-04T00:00:00.000Z',
+            },
+          );
+          expect(contestation.reason).toBe('missing_context');
+          await expect(
+            ready.outputContestations.listOpen(
+              contestation.userId,
+              contestation.resourceType,
+              [report.id],
+            ),
+          ).resolves.toMatchObject([{ id: contestation.id }]);
+          await expect(
+            ready.outputContestations.listOpen(
+              'usr_syntheticconsumer002',
+              contestation.resourceType,
+              [report.id],
+            ),
+          ).resolves.toEqual([]);
+          await expect(
+            client.query(
+              `UPDATE privacy.output_contestations SET reason='unclear' WHERE id=$1`,
+              [contestation.id],
             ),
           ).rejects.toThrow();
           const privacyInput = {
