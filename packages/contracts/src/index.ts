@@ -52,6 +52,45 @@ export const PrivacyRequestSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export const PrivacyRequestListItemSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^dsr_[A-Za-z0-9_-]{16,64}$' }),
+    kind: Type.Union([
+      Type.Literal('access'),
+      Type.Literal('export'),
+      Type.Literal('deletion'),
+    ]),
+    scope: Type.Literal('all_user_data'),
+    status: Type.Union([
+      Type.Literal('requested'),
+      Type.Literal('identity_verification_required'),
+      Type.Literal('in_review'),
+      Type.Literal('fulfilled'),
+      Type.Literal('partially_fulfilled'),
+      Type.Literal('denied'),
+      Type.Literal('cancelled'),
+    ]),
+    version: Type.Integer({ minimum: 1 }),
+    requested_at: IsoTimestampSchema,
+    updated_at: IsoTimestampSchema,
+  },
+  { additionalProperties: false },
+);
+export const PrivacyRequestListQuerySchema = Type.Object(
+  {
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+    cursor: Type.Optional(Type.String({ pattern: '^[A-Za-z0-9_-]{8,512}$' })),
+  },
+  { additionalProperties: false },
+);
+export const PrivacyRequestListSchema = Type.Object(
+  {
+    items: Type.Array(PrivacyRequestListItemSchema, { maxItems: 50 }),
+    next_cursor: Type.Union([Type.String(), Type.Null()]),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
 export const CreatePrivacyRequestBodySchema = Type.Object(
   {
     kind: Type.Union([

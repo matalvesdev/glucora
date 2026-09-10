@@ -468,6 +468,23 @@ describe('real PostgreSQL migrations and readiness', () => {
             { fromStatus: 'requested', toStatus: 'in_review' },
           ]);
           await expect(
+            ready.privacyRequests.listOwn('usr_syntheticconsumer001', {
+              limit: 50,
+            }),
+          ).resolves.toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                id: privacyRequest.id,
+                status: 'in_review',
+              }),
+            ]),
+          );
+          await expect(
+            ready.privacyRequests.listOwn('usr_syntheticconsumer002', {
+              limit: 10,
+            }),
+          ).resolves.toEqual([]);
+          await expect(
             client.query(
               `UPDATE privacy.requests SET status='requested', version=3 WHERE id=$1`,
               [privacyRequest.id],

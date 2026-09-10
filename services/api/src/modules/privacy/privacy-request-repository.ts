@@ -199,5 +199,28 @@ export function createPostgresPrivacyRequestRepository(
       );
       return result.rows.map(mapEvent);
     },
+    async listOwn(userId, page) {
+      if (!Number.isInteger(page.limit) || page.limit < 1 || page.limit > 51)
+        throw new Error('Invalid privacy request page limit');
+      if (
+        page.before &&
+        (!Number.isFinite(Date.parse(page.before.requestedAt)) ||
+          !/^dsr_[A-Za-z0-9_-]{16,64}$/.test(page.before.requestId))
+      )
+        throw new Error('Invalid privacy request cursor');
+      const result = await pool.query<RequestRow>(
+        `SELECT ${requestColumns} FROM privacy.requests
+         WHERE user_id=$1
+           AND ($2::timestamptz IS NULL OR (requested_at,id) < ($2::timestamptz,$3))
+         ORDER BY requested_at DESC,id DESC LIMIT $4`,
+        [
+          userId,
+          page.before?.requestedAt ?? null,
+          page.before?.requestId ?? null,
+          page.limit,
+        ],
+      );
+      return result.rows.map(mapRequest);
+    },
   };
 }

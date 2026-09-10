@@ -8,6 +8,7 @@ import {
   MeSchema,
   ConsentHistoryResponseSchema,
   PrivacyRequestSchema,
+  PrivacyRequestListSchema,
   SupportRequestListSchema,
   SupportRequestSchema,
 } from '../packages/contracts/src/index';
@@ -152,6 +153,7 @@ describe('foundation HTTP contract and privacy', () => {
       },
       findById: async () => null,
       history: async () => [],
+      listOwn: async () => [],
     };
     const app = buildApp({
       checkReadiness: async () => {},
@@ -229,6 +231,7 @@ describe('foundation HTTP contract and privacy', () => {
       findById: async (id, userId) =>
         id === stored.id && userId === stored.userId ? stored : null,
       history: async () => [],
+      listOwn: async (userId) => (userId === stored.userId ? [stored] : []),
     };
     const app = buildApp({
       checkReadiness: async () => {},
@@ -245,6 +248,21 @@ describe('foundation HTTP contract and privacy', () => {
     });
     expect(found.statusCode).toBe(200);
     expect(Value.Check(PrivacyRequestSchema, found.json())).toBe(true);
+    const listed = await app.inject({
+      url: '/v1/privacy-requests?limit=1',
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(Value.Check(PrivacyRequestListSchema, listed.json())).toBe(true);
+    expect(listed.json()).toMatchObject({ items: [{ id: stored.id }] });
+    expect(
+      (
+        await app.inject({
+          url: '/v1/privacy-requests?cursor=invalid___',
+          headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+        })
+      ).statusCode,
+    ).toBe(400);
     expect(
       (
         await app.inject({
