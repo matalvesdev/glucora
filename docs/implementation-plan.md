@@ -60,3 +60,5 @@ H1/H4/H7 em fundação: métricas HTTP/readiness possuem campos fechados sem pay
 F8/G6 em fundação: contestação append-only por output/versão usa motivos controlados, ownership e auditoria atômica; recursos contestados podem ser excluídos de contexto futuro. ADR-028 permanece PROPOSED; resolução/SLA e `ai_runs` reais continuam pendentes.
 
 H8/H9 em gate técnico: readiness de private beta exige evidências/owners de Product, Clinical, Compliance, Security e Operations mais enrollment explícito. CI confirma estado HOLD e impede habilitação acidental. ADR-029 permanece PROPOSED; nenhum gate humano foi aceito.
+
+F3/F7 em fundação: retrieval provider-neutral exige corpus versionado e metadados de aprovação, tratando conteúdo recuperado somente como evidência. O harness de evals versionado exige casos normal, edge, adversarial, abstention, privacy e clinical boundary e emite relatório sem payload bruto. ADR-030 permanece PROPOSED; corpus, adapter, thresholds e capabilities reais continuam pendentes.

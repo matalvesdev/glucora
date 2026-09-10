@@ -28,7 +28,8 @@
     "openapi:check": "tsx scripts/openapi.ts",
     "security:secrets": "node scripts/check-secrets.mjs",
     "db:restore-drill": "bash scripts/backup-restore-drill.sh",
-    "readiness:check": "tsx scripts/readiness-gate.ts"
+    "readiness:check": "tsx scripts/readiness-gate.ts",
+    "ai:eval": "vitest run tests/ai-evaluation.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
