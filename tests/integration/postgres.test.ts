@@ -6,6 +6,9 @@ import pg from 'pg';
 import { describe, it, expect } from 'vitest';
 import { migrate } from '../../scripts/migration-runner';
 import { createDatabase } from '../../services/api/src/database';
+import { buildApp } from '../../services/api/src/app';
+import { createDevelopmentIdentityAdapter } from '../../services/api/src/modules/identity/identity-adapter';
+import { createLogger } from '../../packages/observability/src/index';
 describe('real PostgreSQL migrations and readiness', () => {
   it('applies once, checks history, rolls back failed DDL and detects schema availability', async () => {
     const connectionString = process.env.TEST_DATABASE_URL;
@@ -134,6 +137,43 @@ describe('real PostgreSQL migrations and readiness', () => {
           await expect(
             ready.users.findById('usr_missingconsumer000'),
           ).resolves.toBeNull();
+          const api = buildApp({
+            checkReadiness: ready.checkReadiness,
+            identity: createDevelopmentIdentityAdapter(),
+            users: ready.users,
+            privacyRequests: ready.privacyRequests,
+            privacyRequestPolicy: {
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+            },
+            logger: createLogger('silent'),
+          });
+          try {
+            const created = await api.inject({
+              method: 'POST',
+              url: '/v1/privacy-requests',
+              headers: {
+                'x-glucora-dev-actor': 'usr_syntheticconsumer001',
+                'idempotency-key': 'synthetic-api-request-1',
+              },
+              payload: { kind: 'access' },
+            });
+            expect(created.statusCode).toBe(201);
+            const createdBody = created.json<{ id: string }>();
+            const status = await api.inject({
+              url: `/v1/privacy-requests/${createdBody.id}`,
+              headers: {
+                'x-glucora-dev-actor': 'usr_syntheticconsumer001',
+              },
+            });
+            expect(status.statusCode).toBe(200);
+            expect(status.json()).toMatchObject({
+              id: createdBody.id,
+              kind: 'access',
+              status: 'requested',
+            });
+          } finally {
+            await api.close();
+          }
           const contextTime = '2026-01-01T10:00:00.000Z';
           await client.query(
             `INSERT INTO health.provenance_records

@@ -4,8 +4,12 @@ import { createLogger } from '../packages/observability/src/index';
 import { captureLogs } from '../packages/test-utils/src/index';
 import { Value } from '@sinclair/typebox/value';
 import { HealthSchema, ErrorSchema } from '../packages/contracts/src/index';
-import { MeSchema } from '../packages/contracts/src/index';
+import {
+  MeSchema,
+  PrivacyRequestSchema,
+} from '../packages/contracts/src/index';
 import { createDevelopmentIdentityAdapter } from '../services/api/src/modules/identity/identity-adapter';
+import type { PrivacyRequestRepository } from '../packages/domain/src/index';
 const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -126,6 +130,124 @@ describe('foundation HTTP contract and privacy', () => {
     });
     expect(response.statusCode).toBe(403);
     expect(response.body).not.toContain(syntheticAccount.id);
+  });
+  it('creates an owned privacy request only when policy is configured', async () => {
+    const created: unknown[] = [];
+    const privacyRequests = {
+      create: async (
+        input: Parameters<PrivacyRequestRepository['create']>[0],
+      ) => {
+        created.push(input);
+        return input.request;
+      },
+      transition: async () => {
+        throw new Error('not used');
+      },
+      findById: async () => null,
+      history: async () => [],
+    };
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => syntheticAccount },
+      privacyRequests,
+      privacyRequestPolicy: {
+        retentionPolicyRef: 'synthetic-approved-policy',
+      },
+      logger: createLogger('silent'),
+    });
+    apps.push(app);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/privacy-requests',
+      headers: {
+        'x-glucora-dev-actor': syntheticAccount.id,
+        'idempotency-key': 'synthetic-key-1',
+      },
+      payload: { kind: 'export' },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(Value.Check(PrivacyRequestSchema, response.json())).toBe(true);
+    expect(created).toMatchObject([
+      {
+        request: { userId: syntheticAccount.id, kind: 'export' },
+        audit: { retentionPolicyRef: 'synthetic-approved-policy' },
+      },
+    ]);
+
+    const unavailable = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => syntheticAccount },
+      privacyRequests,
+      logger: createLogger('silent'),
+    });
+    apps.push(unavailable);
+    expect(
+      (
+        await unavailable.inject({
+          method: 'POST',
+          url: '/v1/privacy-requests',
+          headers: {
+            'x-glucora-dev-actor': syntheticAccount.id,
+            'idempotency-key': 'synthetic-key-2',
+          },
+          payload: { kind: 'deletion' },
+        })
+      ).statusCode,
+    ).toBe(503);
+    expect(
+      (
+        await unavailable.inject({
+          url: '/v1/privacy-requests/dsr_syntheticmissing0001',
+          headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+        })
+      ).statusCode,
+    ).toBe(404);
+  });
+  it('reads privacy request status by ownership and validates the HTTP boundary', async () => {
+    const stored = {
+      id: 'dsr_syntheticrequest0001',
+      userId: syntheticAccount.id,
+      kind: 'export' as const,
+      scope: 'all_user_data' as const,
+      status: 'requested' as const,
+      version: 1,
+      requestedAt: '2026-01-02T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    };
+    const privacyRequests: PrivacyRequestRepository = {
+      create: async () => stored,
+      transition: async () => stored,
+      findById: async (id, userId) =>
+        id === stored.id && userId === stored.userId ? stored : null,
+      history: async () => [],
+    };
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => syntheticAccount },
+      privacyRequests,
+      privacyRequestPolicy: { retentionPolicyRef: 'synthetic-policy' },
+      logger: createLogger('silent'),
+    });
+    apps.push(app);
+    const found = await app.inject({
+      url: `/v1/privacy-requests/${stored.id}`,
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(found.statusCode).toBe(200);
+    expect(Value.Check(PrivacyRequestSchema, found.json())).toBe(true);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/v1/privacy-requests',
+          headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+          payload: { kind: 'export', extra: 'synthetic-private-data' },
+        })
+      ).statusCode,
+    ).toBe(400);
   });
   it('does not log request payloads, headers, URL values or upstream error details', async () => {
     const { app, logs } = setup(async () => {

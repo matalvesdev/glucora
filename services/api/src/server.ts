@@ -18,6 +18,14 @@ try {
     checkReadiness: database.checkReadiness,
     identity,
     users: database.users,
+    privacyRequests: database.privacyRequests,
+    ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
+      ? {
+          privacyRequestPolicy: {
+            retentionPolicyRef: config.PRIVACY_REQUEST_RETENTION_POLICY_REF,
+          },
+        }
+      : {}),
     logger: createLogger(config.LOG_LEVEL),
   });
   app.addHook('onClose', async () => database.close());

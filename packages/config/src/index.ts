@@ -30,6 +30,10 @@ const envSchema = z.object({
     optionalValue,
     z.enum(['disabled', 'development']).default('disabled'),
   ),
+  PRIVACY_REQUEST_RETENTION_POLICY_REF: z.preprocess(
+    optionalValue,
+    z.string().min(3).max(128).optional(),
+  ),
 });
 export function readConfig(env: Record<string, string | undefined>) {
   const result = envSchema.safeParse(env);
