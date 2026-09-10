@@ -1,6 +1,7 @@
 import type { Pool } from 'pg';
 import type {
   ConsentEvent,
+  ConsentHistoryItem,
   ConsentRepository,
   RecordConsentDecision,
 } from '@glucora/domain';
@@ -15,6 +16,12 @@ interface ConsentEventRow {
   occurred_at: Date;
   recorded_at: Date;
 }
+interface ConsentHistoryRow extends ConsentEventRow {
+  purpose_key: string;
+  purpose_version: number;
+  purpose_title: string;
+  notice_text: string;
+}
 
 function mapEvent(row: ConsentEventRow): ConsentEvent {
   return {
@@ -24,6 +31,20 @@ function mapEvent(row: ConsentEventRow): ConsentEvent {
     decision: row.event_type,
     channel: row.channel,
     idempotencyKey: row.idempotency_key,
+    occurredAt: row.occurred_at.toISOString(),
+    recordedAt: row.recorded_at.toISOString(),
+  };
+}
+
+function mapHistory(row: ConsentHistoryRow): ConsentHistoryItem {
+  return {
+    eventId: row.id,
+    purposeVersionId: row.purpose_version_id,
+    purposeKey: row.purpose_key,
+    purposeVersion: row.purpose_version,
+    purposeTitle: row.purpose_title,
+    noticeText: row.notice_text,
+    decision: row.event_type,
     occurredAt: row.occurred_at.toISOString(),
     recordedAt: row.recorded_at.toISOString(),
   };
@@ -94,6 +115,34 @@ export function createPostgresConsentRepository(pool: Pool): ConsentRepository {
       );
       const row = result.rows[0];
       return row ? mapEvent(row) : null;
+    },
+    async listHistory(userId, page) {
+      if (!Number.isInteger(page.limit) || page.limit < 1 || page.limit > 101)
+        throw new Error('Invalid consent history limit');
+      if (
+        page.before &&
+        (!Number.isFinite(Date.parse(page.before.occurredAt)) ||
+          !/^cne_[A-Za-z0-9_-]{16,64}$/.test(page.before.eventId))
+      )
+        throw new Error('Invalid consent history cursor');
+      const result = await pool.query<ConsentHistoryRow>(
+        `SELECT e.id,e.user_id,e.purpose_version_id,e.event_type,e.channel,
+                e.idempotency_key,e.occurred_at,e.recorded_at,
+                p.purpose_key,p.version AS purpose_version,
+                p.title AS purpose_title,p.notice_text
+         FROM consent.events e
+         JOIN consent.purpose_versions p ON p.id=e.purpose_version_id
+         WHERE e.user_id=$1
+           AND ($2::timestamptz IS NULL OR (e.occurred_at,e.id) < ($2::timestamptz,$3))
+         ORDER BY e.occurred_at DESC,e.id DESC LIMIT $4`,
+        [
+          userId,
+          page.before?.occurredAt ?? null,
+          page.before?.eventId ?? null,
+          page.limit,
+        ],
+      );
+      return result.rows.map(mapHistory);
     },
   };
 }

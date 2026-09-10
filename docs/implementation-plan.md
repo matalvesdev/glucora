@@ -74,3 +74,5 @@ G1/G3/G7 em API condicionada: POST/GET de solicitações de privacidade exigem a
 H5 em API condicionada: POST/listagem de suporte exigem autenticação, conta ativa, idempotência, categoria controlada e ownership; texto livre e campos adicionais são rejeitados. Sem referência explícita de retenção, novas entradas são bloqueadas, mas registros existentes permanecem legíveis. ADR-035 permanece PROPOSED; roteamento, operador, triagem, SLA, paging e fornecedor continuam pendentes.
 
 G1/G3/G7/H5 em UI condicionada: a área de privacidade e suporte consulta sessão real antes de renderizar formulários; envia somente tipo/categoria e idempotência e valida respostas pelos contratos compartilhados. ADR-036 permanece PROPOSED; login de produção, histórico completo, consentimentos e operação de suporte continuam pendentes.
+
+G4 em API: histórico autenticado lista decisões append-only com chave, título, texto e versão imutável da finalidade, usando ownership, limite fechado e cursor opaco. ADR-037 permanece PROPOSED; finalidades, decisões reais, grant/revoke e reconsentimento continuam pendentes.

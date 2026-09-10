@@ -627,6 +627,33 @@ describe('real PostgreSQL migrations and readiness', () => {
             { decision: 'granted' },
             { decision: 'revoked' },
           ]);
+          const firstConsentPage = await ready.consents.listHistory(
+            'usr_syntheticconsumer001',
+            { limit: 1 },
+          );
+          expect(firstConsentPage).toMatchObject([
+            {
+              purposeVersionId: 'pur_syntheticpurpose001',
+              purposeKey: 'synthetic_research_context',
+              purposeVersion: 1,
+              purposeTitle: 'Synthetic purpose',
+              decision: 'revoked',
+            },
+          ]);
+          await expect(
+            ready.consents.listHistory('usr_syntheticconsumer001', {
+              limit: 2,
+              before: {
+                occurredAt: firstConsentPage[0]!.occurredAt,
+                eventId: firstConsentPage[0]!.eventId,
+              },
+            }),
+          ).resolves.toMatchObject([{ decision: 'granted' }]);
+          await expect(
+            ready.consents.listHistory('usr_syntheticconsumer002', {
+              limit: 10,
+            }),
+          ).resolves.toEqual([]);
           await expect(
             client.query(
               `UPDATE consent.events SET channel = 'changed' WHERE id = $1`,

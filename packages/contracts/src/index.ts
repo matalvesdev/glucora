@@ -104,6 +104,41 @@ export const SupportRequestListSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export const ConsentHistoryQuerySchema = Type.Object(
+  {
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+    cursor: Type.Optional(Type.String({ pattern: '^[A-Za-z0-9_-]{8,512}$' })),
+  },
+  { additionalProperties: false },
+);
+export const ConsentHistoryItemSchema = Type.Object(
+  {
+    event_id: Type.String({ pattern: '^cne_[A-Za-z0-9_-]{16,64}$' }),
+    purpose_version_id: Type.String({
+      pattern: '^pur_[A-Za-z0-9_-]{16,64}$',
+    }),
+    purpose_key: Type.String({ pattern: '^[a-z][a-z0-9_]{2,63}$' }),
+    purpose_version: Type.Integer({ minimum: 1 }),
+    purpose_title: Type.String({ minLength: 1, maxLength: 160 }),
+    notice_text: Type.String({ minLength: 1, maxLength: 4000 }),
+    decision: Type.Union([
+      Type.Literal('granted'),
+      Type.Literal('denied'),
+      Type.Literal('revoked'),
+    ]),
+    occurred_at: IsoTimestampSchema,
+    recorded_at: IsoTimestampSchema,
+  },
+  { additionalProperties: false },
+);
+export const ConsentHistoryResponseSchema = Type.Object(
+  {
+    items: Type.Array(ConsentHistoryItemSchema, { maxItems: 50 }),
+    next_cursor: Type.Union([Type.String(), Type.Null()]),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
 export type HealthResponse = Static<typeof HealthSchema>;
 export type ErrorResponse = Static<typeof ErrorSchema>;
 export type MeResponse = Static<typeof MeSchema>;

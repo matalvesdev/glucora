@@ -18,6 +18,7 @@ try {
     checkReadiness: database.checkReadiness,
     identity,
     users: database.users,
+    consents: database.consents,
     privacyRequests: database.privacyRequests,
     ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
       ? {
