@@ -6,6 +6,91 @@ export interface EvidenceRef {
   readonly corpusVersion: string;
   readonly authorityTier: string;
 }
+export interface ApprovedCorpusDocument {
+  readonly id: string;
+  readonly corpusVersion: string;
+  readonly sourceRef: string;
+  readonly authorityTier: string;
+  readonly jurisdiction: string;
+  readonly publishedAt: string;
+  readonly reviewedAt: string;
+  readonly approvalRef: string;
+  readonly content: string;
+}
+export interface ApprovedCorpusQuery {
+  readonly corpusVersion: string;
+  readonly terms: readonly string[];
+  readonly limit: number;
+}
+export interface ApprovedCorpusPort {
+  retrieve(
+    query: ApprovedCorpusQuery,
+  ): Promise<readonly ApprovedCorpusDocument[]>;
+}
+export type CorpusValidationFailure =
+  | 'invalid_query'
+  | 'too_many_documents'
+  | 'wrong_corpus_version'
+  | 'missing_approval_metadata'
+  | 'invalid_review_metadata';
+export type ValidatedCorpusRetrieval =
+  | {
+      readonly valid: true;
+      readonly documents: readonly ApprovedCorpusDocument[];
+      readonly evidence: readonly EvidenceRef[];
+    }
+  | { readonly valid: false; readonly reason: CorpusValidationFailure };
+
+export function validateCorpusRetrieval(
+  query: ApprovedCorpusQuery,
+  documents: readonly ApprovedCorpusDocument[],
+): ValidatedCorpusRetrieval {
+  if (
+    !query.corpusVersion.trim() ||
+    query.terms.length === 0 ||
+    query.terms.some((term) => !term.trim()) ||
+    !Number.isInteger(query.limit) ||
+    query.limit < 1 ||
+    query.limit > 20
+  )
+    return { valid: false, reason: 'invalid_query' };
+  if (documents.length > query.limit)
+    return { valid: false, reason: 'too_many_documents' };
+  if (documents.some((item) => item.corpusVersion !== query.corpusVersion))
+    return { valid: false, reason: 'wrong_corpus_version' };
+  if (
+    documents.some(
+      (item) =>
+        !item.id.trim() ||
+        !item.sourceRef.trim() ||
+        !item.authorityTier.trim() ||
+        !item.jurisdiction.trim() ||
+        !item.approvalRef.trim(),
+    )
+  )
+    return { valid: false, reason: 'missing_approval_metadata' };
+  if (
+    documents.some((item) => {
+      const published = Date.parse(item.publishedAt);
+      const reviewed = Date.parse(item.reviewedAt);
+      return (
+        !Number.isFinite(published) ||
+        !Number.isFinite(reviewed) ||
+        reviewed < published
+      );
+    })
+  )
+    return { valid: false, reason: 'invalid_review_metadata' };
+  return {
+    valid: true,
+    documents,
+    evidence: documents.map(({ id, corpusVersion, authorityTier }) => ({
+      id,
+      corpusVersion,
+      authorityTier,
+    })),
+  };
+}
 export interface AiContextItem {
   readonly id: string;
   readonly factClass: ObservationFactClass;
