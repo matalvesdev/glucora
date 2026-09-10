@@ -13,6 +13,8 @@ import {
   MeSchema,
   ListSupportRequestsQuerySchema,
   PrivacyRequestParamsSchema,
+  PrivacyRequestListQuerySchema,
+  PrivacyRequestListSchema,
   PrivacyRequestSchema,
   SupportRequestListSchema,
   SupportRequestSchema,
@@ -22,6 +24,7 @@ import type {
   ConsentRepository,
   IdentityPort,
   PrivacyRequestRepository,
+  PrivacyRequest,
   SupportRequestRepository,
   SupportRequestCategory,
   UserAccountRepository,
@@ -69,6 +72,36 @@ function decodeConsentCursor(value: string | undefined) {
     )
       return null;
     return { occurredAt: parsed.occurredAt, eventId: parsed.eventId };
+  } catch {
+    return null;
+  }
+}
+
+function encodePrivacyRequestCursor(item: PrivacyRequest): string {
+  return Buffer.from(
+    JSON.stringify({ requestedAt: item.requestedAt, requestId: item.id }),
+  ).toString('base64url');
+}
+
+function decodePrivacyRequestCursor(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(
+      Buffer.from(value, 'base64url').toString('utf8'),
+    );
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Object.keys(parsed).length !== 2 ||
+      !('requestedAt' in parsed) ||
+      typeof parsed.requestedAt !== 'string' ||
+      !Number.isFinite(Date.parse(parsed.requestedAt)) ||
+      !('requestId' in parsed) ||
+      typeof parsed.requestId !== 'string' ||
+      !/^dsr_[A-Za-z0-9_-]{16,64}$/.test(parsed.requestId)
+    )
+      return null;
+    return { requestedAt: parsed.requestedAt, requestId: parsed.requestId };
   } catch {
     return null;
   }
@@ -357,6 +390,72 @@ export function buildApp(deps: AppDependencies) {
           version: value.version,
           requested_at: value.requestedAt,
           updated_at: value.updatedAt,
+          request_id: request.id,
+        };
+      },
+    );
+    routes.get(
+      '/v1/privacy-requests',
+      {
+        schema: {
+          operationId: 'listPrivacyRequests',
+          querystring: PrivacyRequestListQuerySchema,
+          response: {
+            200: PrivacyRequestListSchema,
+            400: ErrorSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.privacyRequests)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Solicitações temporariamente indisponíveis.',
+            request_id: request.id,
+          });
+        const query = request.query as { limit?: number; cursor?: string };
+        const before = decodePrivacyRequestCursor(query.cursor);
+        if (before === null)
+          return reply.code(400).send({
+            code: 'INVALID_CURSOR',
+            message: 'Cursor inválido.',
+            request_id: request.id,
+          });
+        const limit = query.limit ?? 20;
+        const values = await deps.privacyRequests.listOwn(actor.id, {
+          limit: limit + 1,
+          ...(before ? { before } : {}),
+        });
+        const items = values.slice(0, limit);
+        const next = values.length > limit ? items.at(-1) : undefined;
+        return {
+          items: items.map((value) => ({
+            id: value.id,
+            kind: value.kind,
+            scope: value.scope,
+            status: value.status,
+            version: value.version,
+            requested_at: value.requestedAt,
+            updated_at: value.updatedAt,
+          })),
+          next_cursor: next ? encodePrivacyRequestCursor(next) : null,
           request_id: request.id,
         };
       },

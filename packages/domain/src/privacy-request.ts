@@ -79,4 +79,14 @@ export interface PrivacyRequestRepository {
   transition(input: TransitionPrivacyRequest): Promise<PrivacyRequest>;
   findById(id: string, userId: string): Promise<PrivacyRequest | null>;
   history(id: string, userId: string): Promise<readonly PrivacyRequestEvent[]>;
+  listOwn(
+    userId: string,
+    page: {
+      readonly limit: number;
+      readonly before?: {
+        readonly requestedAt: string;
+        readonly requestId: string;
+      };
+    },
+  ): Promise<readonly PrivacyRequest[]>;
 }

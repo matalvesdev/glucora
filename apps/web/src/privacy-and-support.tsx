@@ -4,6 +4,7 @@ import {
   ConsentHistoryResponseSchema,
   MeSchema,
   PrivacyRequestSchema,
+  PrivacyRequestListSchema,
   SupportRequestSchema,
 } from '@glucora/contracts';
 import { Button } from '@glucora/ui';
@@ -20,6 +21,19 @@ interface ConsentHistoryViewItem {
   decision: 'granted' | 'denied' | 'revoked';
   occurred_at: string;
   recorded_at: string;
+}
+interface PrivacyRequestViewItem {
+  id: string;
+  kind: 'access' | 'export' | 'deletion';
+  status:
+    | 'requested'
+    | 'identity_verification_required'
+    | 'in_review'
+    | 'fulfilled'
+    | 'partially_fulfilled'
+    | 'denied'
+    | 'cancelled';
+  requested_at: string;
 }
 
 async function submitJson(url: string, body: unknown): Promise<Response> {
@@ -65,6 +79,13 @@ export function PrivacyAndSupport() {
   >([]);
   const [consentCursor, setConsentCursor] = useState<string | null>(null);
   const [consentState, setConsentState] = useState<
+    'idle' | 'loading' | 'ready' | 'error'
+  >('idle');
+  const [privacyRequests, setPrivacyRequests] = useState<
+    readonly PrivacyRequestViewItem[]
+  >([]);
+  const [privacyCursor, setPrivacyCursor] = useState<string | null>(null);
+  const [privacyListState, setPrivacyListState] = useState<
     'idle' | 'loading' | 'ready' | 'error'
   >('idle');
 
@@ -122,8 +143,39 @@ export function PrivacyAndSupport() {
     }
   }
 
+  async function loadPrivacyRequests(cursor?: string) {
+    setPrivacyListState('loading');
+    try {
+      const query = new URLSearchParams({ limit: '20' });
+      if (cursor) query.set('cursor', cursor);
+      const response = await fetch(`/v1/privacy-requests?${query}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(PrivacyRequestListSchema, body)) {
+        setPrivacyListState('error');
+        return;
+      }
+      const value = body as {
+        items: PrivacyRequestViewItem[];
+        next_cursor: string | null;
+      };
+      setPrivacyRequests((current) =>
+        cursor ? [...current, ...value.items] : value.items,
+      );
+      setPrivacyCursor(value.next_cursor);
+      setPrivacyListState('ready');
+    } catch {
+      setPrivacyListState('error');
+    }
+  }
+
   useEffect(() => {
-    if (access === 'authenticated') void loadConsentHistory();
+    if (access === 'authenticated') {
+      void loadConsentHistory();
+      void loadPrivacyRequests();
+    }
   }, [access]);
 
   async function requestPrivacy(event: FormEvent) {
@@ -274,6 +326,81 @@ export function PrivacyAndSupport() {
             </p>
           </form>
         </div>
+      ) : null}
+
+      {access === 'authenticated' ? (
+        <section className="mt-8 rounded-3xl border border-stone-200 bg-white p-7 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[.16em] text-teal-800">
+            Acompanhar pedidos
+          </p>
+          <h2 className="mt-3 text-xl font-semibold">
+            Solicitações de privacidade
+          </h2>
+          {privacyListState === 'error' ? (
+            <p className="mt-4 text-sm text-stone-600">
+              Não foi possível carregar suas solicitações agora.
+            </p>
+          ) : privacyListState === 'loading' && privacyRequests.length === 0 ? (
+            <p className="mt-4 text-sm text-stone-600">
+              Carregando solicitações…
+            </p>
+          ) : privacyRequests.length === 0 ? (
+            <p className="mt-4 text-sm text-stone-600">
+              Nenhuma solicitação registrada.
+            </p>
+          ) : (
+            <div className="mt-5 space-y-4">
+              <ul className="space-y-3">
+                {privacyRequests.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 p-4"
+                  >
+                    <div>
+                      <p className="font-semibold">
+                        {item.kind === 'access'
+                          ? 'Acesso aos dados'
+                          : item.kind === 'export'
+                            ? 'Exportação de dados'
+                            : 'Solicitação de exclusão'}
+                      </p>
+                      <p className="mt-1 text-xs text-stone-500">
+                        {new Intl.DateTimeFormat('pt-BR', {
+                          dateStyle: 'medium',
+                        }).format(new Date(item.requested_at))}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
+                      {item.status === 'requested'
+                        ? 'Recebido'
+                        : item.status === 'identity_verification_required'
+                          ? 'Verificação necessária'
+                          : item.status === 'in_review'
+                            ? 'Em análise'
+                            : item.status === 'fulfilled'
+                              ? 'Concluído'
+                              : item.status === 'partially_fulfilled'
+                                ? 'Concluído parcialmente'
+                                : item.status === 'denied'
+                                  ? 'Indeferido'
+                                  : 'Cancelado'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {privacyCursor ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={privacyListState === 'loading'}
+                  onClick={() => void loadPrivacyRequests(privacyCursor)}
+                >
+                  {privacyListState === 'loading' ? 'Carregando…' : 'Ver mais'}
+                </Button>
+              ) : null}
+            </div>
+          )}
+        </section>
       ) : null}
 
       <section className="mt-8 rounded-3xl border border-stone-200 bg-white p-7 shadow-sm">

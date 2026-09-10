@@ -120,6 +120,27 @@ test('authenticated user can submit minimized privacy and support requests', asy
       }),
     });
   });
+  await page.route('**/v1/privacy-requests?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [
+          {
+            id: 'dsr_syntheticrequest0001',
+            kind: 'export',
+            scope: 'all_user_data',
+            status: 'in_review',
+            version: 2,
+            requested_at: '2026-01-02T00:00:00.000Z',
+            updated_at: '2026-01-03T00:00:00.000Z',
+          },
+        ],
+        next_cursor: null,
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    });
+  });
   await page.route('**/v1/support-requests', async (route) => {
     payloads.push(route.request().postDataJSON());
     await route.fulfill({
@@ -138,6 +159,8 @@ test('authenticated user can submit minimized privacy and support requests', asy
   await expect(page.getByRole('status')).toContainText('Acesso verificado');
   await expect(page.getByText('Finalidade sintética')).toBeVisible();
   await expect(page.getByText('Autorizado')).toBeVisible();
+  await expect(page.getByText('Exportação de dados')).toBeVisible();
+  await expect(page.getByText('Em análise')).toBeVisible();
   await page.getByLabel('Tipo de solicitação').selectOption('export');
   await page.getByRole('button', { name: 'Enviar solicitação' }).click();
   await expect(page.getByText('Solicitação registrada.')).toBeVisible();
