@@ -1,6 +1,6 @@
 # ADR-020: contexto temporal, catálogo e consulta canônica
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
 
 ## Decisão proposta
 

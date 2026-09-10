@@ -1,6 +1,6 @@
 # ADR-039: listagem própria de solicitações de privacidade
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

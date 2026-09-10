@@ -1,6 +1,6 @@
 # ADR-016: modelo mínimo de eventos de auditoria
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
 
 ## Contexto
 

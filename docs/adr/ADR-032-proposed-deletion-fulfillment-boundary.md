@@ -1,6 +1,6 @@
 # ADR-032: boundary de fulfillment de exclusão
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

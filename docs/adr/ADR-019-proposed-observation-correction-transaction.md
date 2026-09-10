@@ -1,6 +1,6 @@
 # ADR-019: correção transacional de observações
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
 
 Uma correção bloqueia a versão corrente, marca essa versão como `superseded`, insere nova provenance e nova versão e grava auditoria na mesma transação PostgreSQL. Falha em qualquer etapa desfaz todo o conjunto. A versão esperada evita correções concorrentes silenciosas.
 

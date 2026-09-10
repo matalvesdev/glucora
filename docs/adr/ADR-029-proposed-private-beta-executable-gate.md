@@ -1,6 +1,6 @@
 # ADR-029: gate executável para private beta
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

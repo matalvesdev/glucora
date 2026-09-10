@@ -1,6 +1,6 @@
 # ADR-038: interface de histórico de consentimentos
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

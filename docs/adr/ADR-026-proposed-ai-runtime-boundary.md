@@ -1,6 +1,6 @@
 # ADR-026: boundary inicial do runtime de IA
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

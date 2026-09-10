@@ -1,6 +1,6 @@
 # ADR-031: fundação de solicitações de suporte
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

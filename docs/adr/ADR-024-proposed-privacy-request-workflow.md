@@ -1,6 +1,6 @@
 # ADR-024: workflow de solicitações de direitos do titular
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

@@ -1,6 +1,6 @@
 # ADR-034: API de solicitações de privacidade
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

@@ -1,6 +1,6 @@
 # ADR-018: persistência canônica de observações e provenance
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
 
 Observações quantitativas serão armazenadas no PostgreSQL em versões, com decimal exato, unidade, tempos, classe factual e vínculo obrigatório a provenance do mesmo usuário. A criação inicial grava provenance e observação na mesma transação. Atualizações de conteúdo e exclusões diretas são bloqueadas; uma futura correção somente poderá marcar a versão anterior como superseded e inserir outra versão.
 

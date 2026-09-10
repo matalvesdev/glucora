@@ -1,6 +1,6 @@
 # ADR-021: fundação de eventos contextuais
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

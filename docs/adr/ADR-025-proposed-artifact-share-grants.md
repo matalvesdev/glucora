@@ -1,6 +1,6 @@
 # ADR-025: grants de compartilhamento de artefatos
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 
