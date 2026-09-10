@@ -46,8 +46,11 @@ test('privacy and support remain closed without an authenticated account', async
   await expect(
     page.getByRole('heading', {
       level: 2,
-      name: 'Nenhum consentimento disponível',
+      name: 'Histórico de decisões',
     }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Entre na sua conta para consultar'),
   ).toBeVisible();
   await expect(page.locator('input,textarea,[role="switch"]')).toHaveCount(0);
   expect(
@@ -73,6 +76,29 @@ test('authenticated user can submit minimized privacy and support requests', asy
         timezone: 'America/Sao_Paulo',
         created_at: '2026-01-01T00:00:00.000Z',
         updated_at: '2026-01-01T00:00:00.000Z',
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    }),
+  );
+  await page.route('**/v1/consents/history?*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [
+          {
+            event_id: 'cne_syntheticevent00001',
+            purpose_version_id: 'pur_syntheticpurpose001',
+            purpose_key: 'synthetic_context',
+            purpose_version: 1,
+            purpose_title: 'Finalidade sintética',
+            notice_text: 'Texto sintético da finalidade aprovada.',
+            decision: 'granted',
+            occurred_at: '2026-01-02T00:00:00.000Z',
+            recorded_at: '2026-01-02T00:00:01.000Z',
+          },
+        ],
+        next_cursor: null,
         request_id: '123e4567-e89b-42d3-a456-426614174000',
       }),
     }),
@@ -110,6 +136,8 @@ test('authenticated user can submit minimized privacy and support requests', asy
   await page.goto('/');
   await page.getByRole('button', { name: 'Privacidade e suporte' }).click();
   await expect(page.getByRole('status')).toContainText('Acesso verificado');
+  await expect(page.getByText('Finalidade sintética')).toBeVisible();
+  await expect(page.getByText('Autorizado')).toBeVisible();
   await page.getByLabel('Tipo de solicitação').selectOption('export');
   await page.getByRole('button', { name: 'Enviar solicitação' }).click();
   await expect(page.getByText('Solicitação registrada.')).toBeVisible();
