@@ -111,6 +111,38 @@ export const PrivacyRequestParamsSchema = Type.Object(
   { id: Type.String({ pattern: '^dsr_[A-Za-z0-9_-]{16,64}$' }) },
   { additionalProperties: false },
 );
+export const PrivacyRequestHistoryItemSchema = Type.Object(
+  {
+    from_status: Type.Union([
+      Type.Literal('requested'),
+      Type.Literal('identity_verification_required'),
+      Type.Literal('in_review'),
+      Type.Literal('fulfilled'),
+      Type.Literal('partially_fulfilled'),
+      Type.Literal('denied'),
+      Type.Literal('cancelled'),
+      Type.Null(),
+    ]),
+    to_status: Type.Union([
+      Type.Literal('requested'),
+      Type.Literal('identity_verification_required'),
+      Type.Literal('in_review'),
+      Type.Literal('fulfilled'),
+      Type.Literal('partially_fulfilled'),
+      Type.Literal('denied'),
+      Type.Literal('cancelled'),
+    ]),
+    occurred_at: IsoTimestampSchema,
+  },
+  { additionalProperties: false },
+);
+export const PrivacyRequestHistorySchema = Type.Object(
+  {
+    items: Type.Array(PrivacyRequestHistoryItemSchema, { maxItems: 100 }),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
 const SupportCategorySchema = Type.Union([
   Type.Literal('account_access'),
   Type.Literal('privacy_rights'),

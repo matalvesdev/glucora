@@ -80,3 +80,5 @@ G4 em API: histórico autenticado lista decisões append-only com chave, título
 G4 em UI: após sessão válida, a área de privacidade mostra finalidade, texto, versão, decisão e data do histórico, valida o contrato e pagina pelo cursor opaco. ADR-038 permanece PROPOSED; publicação, grant/revoke e reconsentimento reais continuam pendentes.
 
 G7 em API/UI: listagem própria de solicitações de privacidade usa ownership, limite fechado e cursor opaco; a interface mostra tipo e estado sem eventos internos e a atualiza após criação válida. ADR-039 permanece PROPOSED; verificação, transições e fulfillment continuam pendentes.
+
+G7 em API: histórico próprio de solicitação expõe somente transições e tempos append-only, após ownership, sem códigos internos, identidades ou detalhes de fulfillment. ADR-041 permanece PROPOSED; verificação, transições e fulfillment continuam pendentes.

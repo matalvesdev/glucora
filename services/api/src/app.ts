@@ -15,6 +15,7 @@ import {
   PrivacyRequestParamsSchema,
   PrivacyRequestListQuerySchema,
   PrivacyRequestListSchema,
+  PrivacyRequestHistorySchema,
   PrivacyRequestSchema,
   SupportRequestListSchema,
   SupportRequestSchema,
@@ -367,6 +368,61 @@ export function buildApp(deps: AppDependencies) {
             });
           throw error;
         }
+      },
+    );
+    routes.get(
+      '/v1/privacy-requests/:id/history',
+      {
+        schema: {
+          operationId: 'getPrivacyRequestHistory',
+          params: PrivacyRequestParamsSchema,
+          response: {
+            200: PrivacyRequestHistorySchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            404: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.privacyRequests)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Solicitação temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const { id } = request.params as { id: string };
+        const value = await deps.privacyRequests.findById(id, actor.id);
+        if (!value)
+          return reply.code(404).send({
+            code: 'NOT_FOUND',
+            message: 'Recurso não encontrado.',
+            request_id: request.id,
+          });
+        const events = await deps.privacyRequests.history(id, actor.id);
+        return {
+          items: events.map((event) => ({
+            from_status: event.fromStatus,
+            to_status: event.toStatus,
+            occurred_at: event.occurredAt,
+          })),
+          request_id: request.id,
+        };
       },
     );
     routes.get(
