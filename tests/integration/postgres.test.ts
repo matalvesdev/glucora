@@ -145,6 +145,10 @@ describe('real PostgreSQL migrations and readiness', () => {
             privacyRequestPolicy: {
               retentionPolicyRef: 'synthetic-retention-review-ref',
             },
+            supportRequests: ready.supportRequests,
+            supportRequestPolicy: {
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+            },
             logger: createLogger('silent'),
           });
           try {
@@ -170,6 +174,28 @@ describe('real PostgreSQL migrations and readiness', () => {
               id: createdBody.id,
               kind: 'access',
               status: 'requested',
+            });
+            const support = await api.inject({
+              method: 'POST',
+              url: '/v1/support-requests',
+              headers: {
+                'x-glucora-dev-actor': 'usr_syntheticconsumer001',
+                'idempotency-key': 'synthetic-api-support-1',
+              },
+              payload: { category: 'privacy_rights' },
+            });
+            expect(support.statusCode).toBe(201);
+            expect(
+              (
+                await api.inject({
+                  url: '/v1/support-requests',
+                  headers: {
+                    'x-glucora-dev-actor': 'usr_syntheticconsumer001',
+                  },
+                })
+              ).json(),
+            ).toMatchObject({
+              items: [{ category: 'privacy_rights', status: 'submitted' }],
             });
           } finally {
             await api.close();
@@ -341,7 +367,11 @@ describe('real PostgreSQL migrations and readiness', () => {
           ).rejects.toThrow('Idempotency key reused');
           await expect(
             ready.supportRequests.listOwn(supportRequest.userId, 10),
-          ).resolves.toMatchObject([{ id: supportRequest.id }]);
+          ).resolves.toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({ id: supportRequest.id }),
+            ]),
+          );
           await expect(
             ready.supportRequests.listOwn('usr_syntheticconsumer002', 10),
           ).resolves.toEqual([]);

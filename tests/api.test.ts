@@ -7,9 +7,14 @@ import { HealthSchema, ErrorSchema } from '../packages/contracts/src/index';
 import {
   MeSchema,
   PrivacyRequestSchema,
+  SupportRequestListSchema,
+  SupportRequestSchema,
 } from '../packages/contracts/src/index';
 import { createDevelopmentIdentityAdapter } from '../services/api/src/modules/identity/identity-adapter';
-import type { PrivacyRequestRepository } from '../packages/domain/src/index';
+import type {
+  PrivacyRequestRepository,
+  SupportRequestRepository,
+} from '../packages/domain/src/index';
 const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -248,6 +253,63 @@ describe('foundation HTTP contract and privacy', () => {
         })
       ).statusCode,
     ).toBe(400);
+  });
+  it('creates and lists controlled support requests without free text', async () => {
+    const stored = {
+      id: 'sup_syntheticrequest0001',
+      userId: syntheticAccount.id,
+      category: 'technical_issue' as const,
+      status: 'submitted' as const,
+      createdAt: '2026-01-02T00:00:00.000Z',
+    };
+    const supportRequests: SupportRequestRepository = {
+      create: async (input) => ({
+        ...input.request,
+        createdAt: stored.createdAt,
+      }),
+      listOwn: async (userId) =>
+        userId === syntheticAccount.id ? [stored] : [],
+    };
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => syntheticAccount },
+      supportRequests,
+      supportRequestPolicy: { retentionPolicyRef: 'synthetic-policy' },
+      logger: createLogger('silent'),
+    });
+    apps.push(app);
+    const created = await app.inject({
+      method: 'POST',
+      url: '/v1/support-requests',
+      headers: {
+        'x-glucora-dev-actor': syntheticAccount.id,
+        'idempotency-key': 'synthetic-support-1',
+      },
+      payload: { category: 'technical_issue' },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(Value.Check(SupportRequestSchema, created.json())).toBe(true);
+    const listed = await app.inject({
+      url: '/v1/support-requests?limit=10',
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(Value.Check(SupportRequestListSchema, listed.json())).toBe(true);
+    const rejected = await app.inject({
+      method: 'POST',
+      url: '/v1/support-requests',
+      headers: {
+        'x-glucora-dev-actor': syntheticAccount.id,
+        'idempotency-key': 'synthetic-support-2',
+      },
+      payload: {
+        category: 'technical_issue',
+        message: 'synthetic health payload',
+      },
+    });
+    expect(rejected.statusCode).toBe(400);
+    expect(rejected.body).not.toContain('synthetic health payload');
   });
   it('does not log request payloads, headers, URL values or upstream error details', async () => {
     const { app, logs } = setup(async () => {
