@@ -282,13 +282,21 @@ describe('foundation HTTP contract and privacy', () => {
       status: 'submitted' as const,
       createdAt: '2026-01-02T00:00:00.000Z',
     };
+    const later = {
+      ...stored,
+      id: 'sup_syntheticrequest0002',
+      createdAt: '2026-01-03T00:00:00.000Z',
+    };
+    const pages: unknown[] = [];
     const supportRequests: SupportRequestRepository = {
       create: async (input) => ({
         ...input.request,
         createdAt: stored.createdAt,
       }),
-      listOwn: async (userId) =>
-        userId === syntheticAccount.id ? [stored] : [],
+      listOwn: async (userId, page) => {
+        pages.push(page);
+        return userId === syntheticAccount.id ? [later, stored] : [];
+      },
     };
     const app = buildApp({
       checkReadiness: async () => {},
@@ -311,11 +319,33 @@ describe('foundation HTTP contract and privacy', () => {
     expect(created.statusCode).toBe(201);
     expect(Value.Check(SupportRequestSchema, created.json())).toBe(true);
     const listed = await app.inject({
-      url: '/v1/support-requests?limit=10',
+      url: '/v1/support-requests?limit=1',
       headers: { 'x-glucora-dev-actor': syntheticAccount.id },
     });
     expect(listed.statusCode).toBe(200);
     expect(Value.Check(SupportRequestListSchema, listed.json())).toBe(true);
+    const listBody = listed.json<{ next_cursor: string | null }>();
+    expect(listBody.next_cursor).toEqual(expect.any(String));
+    const continued = await app.inject({
+      url: `/v1/support-requests?limit=1&cursor=${listBody.next_cursor}`,
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(continued.statusCode).toBe(200);
+    expect(pages).toEqual([
+      { limit: 2 },
+      {
+        limit: 2,
+        before: {
+          createdAt: stored.createdAt,
+          requestId: stored.id,
+        },
+      },
+    ]);
+    const invalidCursor = await app.inject({
+      url: '/v1/support-requests?cursor=not-a-valid-cursor',
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(invalidCursor.statusCode).toBe(400);
     const rejected = await app.inject({
       method: 'POST',
       url: '/v1/support-requests',

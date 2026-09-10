@@ -7,6 +7,7 @@ Escopo: H5, criação e listagem própria.
 - Ids, titular, timestamp e auditoria são derivados pelo servidor.
 - Criação exige idempotência e referência explícita de retenção.
 - GET limita resultados, usa somente o titular autenticado e pagina com cursor opaco por criação/id.
+- Teste HTTP cobre o cursor seguinte e rejeita cursor malformado.
 - OpenAPI deriva dos schemas runtime.
 
 Validação: `pnpm check`, `pnpm test:integration` e checks remotos.
