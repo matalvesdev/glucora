@@ -35,7 +35,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(13);
+        ).toBe(14);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -90,8 +90,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0013_output_contestations.sql'),
           join(directory, '0013_output_contestations.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0014_support_requests.sql'),
+          join(directory, '0014_support_requests.sql'),
+        );
         await writeFile(
-          join(directory, '0014_failure.sql'),
+          join(directory, '0015_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
         );
         await expect(migrate(url.toString(), directory)).rejects.toThrow();
@@ -267,6 +271,54 @@ describe('real PostgreSQL migrations and readiness', () => {
               [contestation.id],
             ),
           ).rejects.toThrow();
+          const supportInput = {
+            request: {
+              id: 'sup_syntheticrequest0001',
+              userId: 'usr_syntheticconsumer001',
+              category: 'technical_issue' as const,
+              status: 'submitted' as const,
+              createdAt: '2026-01-04T00:00:00.000Z',
+            },
+            idempotencyKey: 'synthetic-support-key-1',
+            requestHash: 'd'.repeat(64),
+            audit: {
+              id: 'aud_syntheticsupport0001',
+              requestId: '48a32814-5309-4237-a751-b69010af6a55',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-04T00:00:00.000Z',
+            },
+          };
+          const supportRequest =
+            await ready.supportRequests.create(supportInput);
+          await expect(
+            ready.supportRequests.create(supportInput),
+          ).resolves.toEqual(supportRequest);
+          await expect(
+            ready.supportRequests.create({
+              ...supportInput,
+              requestHash: 'e'.repeat(64),
+            }),
+          ).rejects.toThrow('Idempotency key reused');
+          await expect(
+            ready.supportRequests.listOwn(supportRequest.userId, 10),
+          ).resolves.toMatchObject([{ id: supportRequest.id }]);
+          await expect(
+            ready.supportRequests.listOwn('usr_syntheticconsumer002', 10),
+          ).resolves.toEqual([]);
+          await expect(
+            client.query(
+              `UPDATE support.requests SET category='sharing' WHERE id=$1`,
+              [supportRequest.id],
+            ),
+          ).rejects.toThrow();
+          await expect(
+            ready.audit.historyForResource(
+              'support_request',
+              supportRequest.id,
+            ),
+          ).resolves.toMatchObject([
+            { action: 'created', outcome: 'succeeded' },
+          ]);
           const privacyInput = {
             request: {
               id: 'dsr_syntheticrequest0001',
