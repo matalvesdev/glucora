@@ -186,13 +186,16 @@ export function PrivacyAndSupport() {
         kind: privacyKind,
       });
       const body: unknown = await response.json();
-      setPrivacySubmit(
-        response.status === 503
-          ? 'unavailable'
-          : response.ok && Value.Check(PrivacyRequestSchema, body)
-            ? 'success'
-            : 'error',
-      );
+      if (response.status === 503) {
+        setPrivacySubmit('unavailable');
+        return;
+      }
+      if (!response.ok || !Value.Check(PrivacyRequestSchema, body)) {
+        setPrivacySubmit('error');
+        return;
+      }
+      setPrivacySubmit('success');
+      await loadPrivacyRequests();
     } catch {
       setPrivacySubmit('error');
     }

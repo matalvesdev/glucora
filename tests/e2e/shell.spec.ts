@@ -64,6 +64,7 @@ test('authenticated user can submit minimized privacy and support requests', asy
   page,
 }) => {
   const payloads: unknown[] = [];
+  let privacyListCalls = 0;
   await page.route('**/v1/me', (route) =>
     route.fulfill({
       status: 200,
@@ -121,6 +122,7 @@ test('authenticated user can submit minimized privacy and support requests', asy
     });
   });
   await page.route('**/v1/privacy-requests?*', async (route) => {
+    privacyListCalls += 1;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -135,6 +137,19 @@ test('authenticated user can submit minimized privacy and support requests', asy
             requested_at: '2026-01-02T00:00:00.000Z',
             updated_at: '2026-01-03T00:00:00.000Z',
           },
+          ...(privacyListCalls > 1
+            ? [
+                {
+                  id: 'dsr_syntheticrequest0002',
+                  kind: 'export',
+                  scope: 'all_user_data',
+                  status: 'requested',
+                  version: 1,
+                  requested_at: '2026-01-04T00:00:00.000Z',
+                  updated_at: '2026-01-04T00:00:00.000Z',
+                },
+              ]
+            : []),
         ],
         next_cursor: null,
         request_id: '123e4567-e89b-42d3-a456-426614174000',
@@ -164,6 +179,7 @@ test('authenticated user can submit minimized privacy and support requests', asy
   await page.getByLabel('Tipo de solicitação').selectOption('export');
   await page.getByRole('button', { name: 'Enviar solicitação' }).click();
   await expect(page.getByText('Solicitação registrada.')).toBeVisible();
+  await expect(page.getByText('Recebido')).toBeVisible();
   await page.getByRole('button', { name: 'Enviar pedido' }).click();
   await expect(page.getByText('Pedido de suporte registrado.')).toBeVisible();
   expect(payloads).toEqual([
