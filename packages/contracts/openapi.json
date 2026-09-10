@@ -1103,11 +1103,20 @@
           {
             "schema": {
               "minimum": 1,
-              "maximum": 100,
+              "maximum": 50,
               "type": "integer"
             },
             "in": "query",
             "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{8,512}$",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
             "required": false
           }
         ],
@@ -1119,10 +1128,10 @@
                 "schema": {
                   "additionalProperties": false,
                   "type": "object",
-                  "required": ["items", "request_id"],
+                  "required": ["items", "next_cursor", "request_id"],
                   "properties": {
                     "items": {
-                      "maxItems": 100,
+                      "maxItems": 50,
                       "type": "array",
                       "items": {
                         "additionalProperties": false,
@@ -1171,6 +1180,40 @@
                           }
                         }
                       }
+                    },
+                    "next_cursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
                     },
                     "request_id": {
                       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",

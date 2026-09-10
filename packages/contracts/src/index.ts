@@ -133,12 +133,16 @@ export const CreateSupportRequestBodySchema = Type.Object(
   { additionalProperties: false },
 );
 export const ListSupportRequestsQuerySchema = Type.Object(
-  { limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })) },
+  {
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+    cursor: Type.Optional(Type.String({ pattern: '^[A-Za-z0-9_-]{8,512}$' })),
+  },
   { additionalProperties: false },
 );
 export const SupportRequestListSchema = Type.Object(
   {
-    items: Type.Array(SupportRequestSchema, { maxItems: 100 }),
+    items: Type.Array(SupportRequestSchema, { maxItems: 50 }),
+    next_cursor: Type.Union([Type.String(), Type.Null()]),
     request_id: RequestIdSchema,
   },
   { additionalProperties: false },

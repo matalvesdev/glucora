@@ -6,9 +6,9 @@ Escopo: H5, criação e listagem própria.
 - POST aceita somente uma das categorias controladas e rejeita texto livre/campos adicionais.
 - Ids, titular, timestamp e auditoria são derivados pelo servidor.
 - Criação exige idempotência e referência explícita de retenção.
-- GET limita resultados e usa somente o titular autenticado.
+- GET limita resultados, usa somente o titular autenticado e pagina com cursor opaco por criação/id.
 - OpenAPI deriva dos schemas runtime.
 
 Validação: `pnpm check`, `pnpm test:integration` e checks remotos.
 
-Limite: roteamento, operador, triagem, SLA, paging e fornecedor permanecem pendentes. ADR-035 permanece PROPOSED.
+Limite: roteamento, operador, triagem, SLA e fornecedor permanecem pendentes. ADR-035 e ADR-040 permanecem PROPOSED.

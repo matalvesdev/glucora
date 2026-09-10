@@ -28,5 +28,14 @@ export interface CreateSupportRequest {
 
 export interface SupportRequestRepository {
   create(input: CreateSupportRequest): Promise<SupportRequest>;
-  listOwn(userId: string, limit: number): Promise<readonly SupportRequest[]>;
+  listOwn(
+    userId: string,
+    page: {
+      readonly limit: number;
+      readonly before?: {
+        readonly createdAt: string;
+        readonly requestId: string;
+      };
+    },
+  ): Promise<readonly SupportRequest[]>;
 }

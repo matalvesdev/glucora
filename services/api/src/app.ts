@@ -25,6 +25,7 @@ import type {
   IdentityPort,
   PrivacyRequestRepository,
   PrivacyRequest,
+  SupportRequest,
   SupportRequestRepository,
   SupportRequestCategory,
   UserAccountRepository,
@@ -102,6 +103,36 @@ function decodePrivacyRequestCursor(value: string | undefined) {
     )
       return null;
     return { requestedAt: parsed.requestedAt, requestId: parsed.requestId };
+  } catch {
+    return null;
+  }
+}
+
+function encodeSupportRequestCursor(item: SupportRequest): string {
+  return Buffer.from(
+    JSON.stringify({ createdAt: item.createdAt, requestId: item.id }),
+  ).toString('base64url');
+}
+
+function decodeSupportRequestCursor(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(
+      Buffer.from(value, 'base64url').toString('utf8'),
+    );
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Object.keys(parsed).length !== 2 ||
+      !('createdAt' in parsed) ||
+      typeof parsed.createdAt !== 'string' ||
+      !Number.isFinite(Date.parse(parsed.createdAt)) ||
+      !('requestId' in parsed) ||
+      typeof parsed.requestId !== 'string' ||
+      !/^sup_[A-Za-z0-9_-]{16,64}$/.test(parsed.requestId)
+    )
+      return null;
+    return { createdAt: parsed.createdAt, requestId: parsed.requestId };
   } catch {
     return null;
   }
@@ -616,6 +647,7 @@ export function buildApp(deps: AppDependencies) {
           querystring: ListSupportRequestsQuerySchema,
           response: {
             200: SupportRequestListSchema,
+            400: ErrorSchema,
             401: ErrorSchema,
             403: ErrorSchema,
             503: ErrorSchema,
@@ -643,18 +675,28 @@ export function buildApp(deps: AppDependencies) {
             message: 'Suporte temporariamente indisponível.',
             request_id: request.id,
           });
-        const query = request.query as { limit?: number };
+        const query = request.query as { limit?: number; cursor?: string };
+        const before = decodeSupportRequestCursor(query.cursor);
+        if (before === null)
+          return reply.code(400).send({
+            code: 'INVALID_CURSOR',
+            message: 'Cursor inválido.',
+            request_id: request.id,
+          });
+        const limit = query.limit ?? 20;
         const values = await deps.supportRequests.listOwn(
           actor.id,
-          query.limit ?? 20,
+          before ? { limit: limit + 1, before } : { limit: limit + 1 },
         );
+        const next = values.length > limit ? values[limit] : null;
         return {
-          items: values.map((value) => ({
+          items: values.slice(0, limit).map((value) => ({
             id: value.id,
             category: value.category,
             status: value.status,
             created_at: value.createdAt,
           })),
+          next_cursor: next ? encodeSupportRequestCursor(next) : null,
           request_id: request.id,
         };
       },
