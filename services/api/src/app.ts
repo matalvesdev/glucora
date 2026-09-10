@@ -4,16 +4,22 @@ import swagger from '@fastify/swagger';
 import helmet from '@fastify/helmet';
 import {
   CreatePrivacyRequestBodySchema,
+  CreateSupportRequestBodySchema,
   ErrorSchema,
   HealthSchema,
   IdempotencyHeadersSchema,
   MeSchema,
+  ListSupportRequestsQuerySchema,
   PrivacyRequestParamsSchema,
   PrivacyRequestSchema,
+  SupportRequestListSchema,
+  SupportRequestSchema,
 } from '@glucora/contracts';
 import type {
   IdentityPort,
   PrivacyRequestRepository,
+  SupportRequestRepository,
+  SupportRequestCategory,
   UserAccountRepository,
 } from '@glucora/domain';
 import {
@@ -27,6 +33,8 @@ export interface AppDependencies {
   users?: UserAccountRepository;
   privacyRequests?: PrivacyRequestRepository;
   privacyRequestPolicy?: { readonly retentionPolicyRef: string };
+  supportRequests?: SupportRequestRepository;
+  supportRequestPolicy?: { readonly retentionPolicyRef: string };
   logger?: ReturnType<typeof createLogger>;
   metrics?: MetricSink;
 }
@@ -42,6 +50,7 @@ export function buildApp(deps: AppDependencies) {
     genReqId: () => randomUUID(),
     bodyLimit: 32768,
     requestTimeout: 10000,
+    ajv: { customOptions: { removeAdditional: false } },
   });
   app.register(helmet);
   app.register(swagger, {
@@ -312,6 +321,137 @@ export function buildApp(deps: AppDependencies) {
           version: value.version,
           requested_at: value.requestedAt,
           updated_at: value.updatedAt,
+          request_id: request.id,
+        };
+      },
+    );
+    routes.post(
+      '/v1/support-requests',
+      {
+        schema: {
+          operationId: 'createSupportRequest',
+          headers: IdempotencyHeadersSchema,
+          body: CreateSupportRequestBodySchema,
+          response: {
+            201: SupportRequestSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            409: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.supportRequests || !deps.supportRequestPolicy)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Suporte temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const body = request.body as { category: SupportRequestCategory };
+        const headers = request.headers as { 'idempotency-key': string };
+        const occurredAt = new Date().toISOString();
+        try {
+          const value = await deps.supportRequests.create({
+            request: {
+              id: `sup_${randomUUID().replaceAll('-', '')}`,
+              userId: actor.id,
+              category: body.category,
+              status: 'submitted',
+              createdAt: occurredAt,
+            },
+            idempotencyKey: headers['idempotency-key'],
+            requestHash: createHash('sha256')
+              .update(body.category)
+              .digest('hex'),
+            audit: {
+              id: `aud_${randomUUID().replaceAll('-', '')}`,
+              requestId: request.id,
+              retentionPolicyRef: deps.supportRequestPolicy.retentionPolicyRef,
+              occurredAt,
+            },
+          });
+          return reply.code(201).send({
+            id: value.id,
+            category: value.category,
+            status: value.status,
+            created_at: value.createdAt,
+          });
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === 'Idempotency key reused'
+          )
+            return reply.code(409).send({
+              code: 'IDEMPOTENCY_CONFLICT',
+              message: 'A chave de idempotência já foi utilizada.',
+              request_id: request.id,
+            });
+          throw error;
+        }
+      },
+    );
+    routes.get(
+      '/v1/support-requests',
+      {
+        schema: {
+          operationId: 'listSupportRequests',
+          querystring: ListSupportRequestsQuerySchema,
+          response: {
+            200: SupportRequestListSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.supportRequests)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Suporte temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const query = request.query as { limit?: number };
+        const values = await deps.supportRequests.listOwn(
+          actor.id,
+          query.limit ?? 20,
+        );
+        return {
+          items: values.map((value) => ({
+            id: value.id,
+            category: value.category,
+            status: value.status,
+            created_at: value.createdAt,
+          })),
           request_id: request.id,
         };
       },

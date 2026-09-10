@@ -26,6 +26,14 @@ try {
           },
         }
       : {}),
+    supportRequests: database.supportRequests,
+    ...(config.SUPPORT_REQUEST_RETENTION_POLICY_REF
+      ? {
+          supportRequestPolicy: {
+            retentionPolicyRef: config.SUPPORT_REQUEST_RETENTION_POLICY_REF,
+          },
+        }
+      : {}),
     logger: createLogger(config.LOG_LEVEL),
   });
   app.addHook('onClose', async () => database.close());

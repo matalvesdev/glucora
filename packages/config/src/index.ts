@@ -34,6 +34,10 @@ const envSchema = z.object({
     optionalValue,
     z.string().min(3).max(128).optional(),
   ),
+  SUPPORT_REQUEST_RETENTION_POLICY_REF: z.preprocess(
+    optionalValue,
+    z.string().min(3).max(128).optional(),
+  ),
 });
 export function readConfig(env: Record<string, string | undefined>) {
   const result = envSchema.safeParse(env);
