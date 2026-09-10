@@ -54,3 +54,5 @@ E6/G5 em fundação: grants limitam acesso a um relatório, destinatário opaco,
 Iniciativa F iniciada: F1/F2/F6/F9 possuem registry e gateway provider-neutral com pipeline fail-closed de risco → auth/consent → evidência → provider → schema → guard → fallback. ADR-026 permanece PROPOSED; nenhuma capability real está ativa.
 
 Iniciativa H avançada: H2/H3 possuem backup custom-format, checksum e restore drill isolado no CI, com manifesto sem dados. ADR-027 permanece PROPOSED; schedule, storage/KMS, retenção, RPO/RTO e owner de produção continuam abertos.
+
+H1/H4/H7 em fundação: métricas HTTP/readiness possuem campos fechados sem payload sensível; runbook registra stop conditions, contenção, recuperação e evidência; threat model cobre os módulos adicionados. Exporter, alertas, paging, owners e SLAs continuam abertos.
