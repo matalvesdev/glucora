@@ -1018,6 +1018,229 @@
           }
         }
       }
+    },
+    "/v1/consents/history": {
+      "get": {
+        "operationId": "listConsentHistory",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{8,512}$",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["items", "next_cursor", "request_id"],
+                  "properties": {
+                    "items": {
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "event_id",
+                          "purpose_version_id",
+                          "purpose_key",
+                          "purpose_version",
+                          "purpose_title",
+                          "notice_text",
+                          "decision",
+                          "occurred_at",
+                          "recorded_at"
+                        ],
+                        "properties": {
+                          "event_id": {
+                            "pattern": "^cne_[A-Za-z0-9_-]{16,64}$",
+                            "type": "string"
+                          },
+                          "purpose_version_id": {
+                            "pattern": "^pur_[A-Za-z0-9_-]{16,64}$",
+                            "type": "string"
+                          },
+                          "purpose_key": {
+                            "pattern": "^[a-z][a-z0-9_]{2,63}$",
+                            "type": "string"
+                          },
+                          "purpose_version": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "purpose_title": {
+                            "minLength": 1,
+                            "maxLength": 160,
+                            "type": "string"
+                          },
+                          "notice_text": {
+                            "minLength": 1,
+                            "maxLength": 4000,
+                            "type": "string"
+                          },
+                          "decision": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["granted"]
+                              },
+                              {
+                                "type": "string",
+                                "enum": ["denied"]
+                              },
+                              {
+                                "type": "string",
+                                "enum": ["revoked"]
+                              }
+                            ]
+                          },
+                          "occurred_at": {
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                            "type": "string"
+                          },
+                          "recorded_at": {
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "next_cursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

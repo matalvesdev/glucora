@@ -3,6 +3,8 @@ import Fastify, { LogController } from 'fastify';
 import swagger from '@fastify/swagger';
 import helmet from '@fastify/helmet';
 import {
+  ConsentHistoryQuerySchema,
+  ConsentHistoryResponseSchema,
   CreatePrivacyRequestBodySchema,
   CreateSupportRequestBodySchema,
   ErrorSchema,
@@ -16,6 +18,8 @@ import {
   SupportRequestSchema,
 } from '@glucora/contracts';
 import type {
+  ConsentHistoryItem,
+  ConsentRepository,
   IdentityPort,
   PrivacyRequestRepository,
   SupportRequestRepository,
@@ -31,6 +35,7 @@ export interface AppDependencies {
   checkReadiness: () => Promise<void>;
   identity?: IdentityPort<import('fastify').FastifyRequest>;
   users?: UserAccountRepository;
+  consents?: ConsentRepository;
   privacyRequests?: PrivacyRequestRepository;
   privacyRequestPolicy?: { readonly retentionPolicyRef: string };
   supportRequests?: SupportRequestRepository;
@@ -38,6 +43,37 @@ export interface AppDependencies {
   logger?: ReturnType<typeof createLogger>;
   metrics?: MetricSink;
 }
+
+function encodeConsentCursor(item: ConsentHistoryItem): string {
+  return Buffer.from(
+    JSON.stringify({ occurredAt: item.occurredAt, eventId: item.eventId }),
+  ).toString('base64url');
+}
+
+function decodeConsentCursor(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(
+      Buffer.from(value, 'base64url').toString('utf8'),
+    );
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Object.keys(parsed).length !== 2 ||
+      !('occurredAt' in parsed) ||
+      typeof parsed.occurredAt !== 'string' ||
+      !Number.isFinite(Date.parse(parsed.occurredAt)) ||
+      !('eventId' in parsed) ||
+      typeof parsed.eventId !== 'string' ||
+      !/^cne_[A-Za-z0-9_-]{16,64}$/.test(parsed.eventId)
+    )
+      return null;
+    return { occurredAt: parsed.occurredAt, eventId: parsed.eventId };
+  } catch {
+    return null;
+  }
+}
+
 export function buildApp(deps: AppDependencies) {
   const metrics = deps.metrics ?? createNoopMetricSink();
   const app = Fastify({
@@ -403,6 +439,74 @@ export function buildApp(deps: AppDependencies) {
             });
           throw error;
         }
+      },
+    );
+    routes.get(
+      '/v1/consents/history',
+      {
+        schema: {
+          operationId: 'listConsentHistory',
+          querystring: ConsentHistoryQuerySchema,
+          response: {
+            200: ConsentHistoryResponseSchema,
+            400: ErrorSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.consents)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Histórico temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const query = request.query as { limit?: number; cursor?: string };
+        const before = decodeConsentCursor(query.cursor);
+        if (before === null)
+          return reply.code(400).send({
+            code: 'INVALID_CURSOR',
+            message: 'Cursor inválido.',
+            request_id: request.id,
+          });
+        const limit = query.limit ?? 20;
+        const values = await deps.consents.listHistory(actor.id, {
+          limit: limit + 1,
+          ...(before ? { before } : {}),
+        });
+        const items = values.slice(0, limit);
+        const next = values.length > limit ? items.at(-1) : undefined;
+        return {
+          items: items.map((item) => ({
+            event_id: item.eventId,
+            purpose_version_id: item.purposeVersionId,
+            purpose_key: item.purposeKey,
+            purpose_version: item.purposeVersion,
+            purpose_title: item.purposeTitle,
+            notice_text: item.noticeText,
+            decision: item.decision,
+            occurred_at: item.occurredAt,
+            recorded_at: item.recordedAt,
+          })),
+          next_cursor: next ? encodeConsentCursor(next) : null,
+          request_id: request.id,
+        };
       },
     );
     routes.get(

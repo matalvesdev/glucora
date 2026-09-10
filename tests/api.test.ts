@@ -6,12 +6,14 @@ import { Value } from '@sinclair/typebox/value';
 import { HealthSchema, ErrorSchema } from '../packages/contracts/src/index';
 import {
   MeSchema,
+  ConsentHistoryResponseSchema,
   PrivacyRequestSchema,
   SupportRequestListSchema,
   SupportRequestSchema,
 } from '../packages/contracts/src/index';
 import { createDevelopmentIdentityAdapter } from '../services/api/src/modules/identity/identity-adapter';
 import type {
+  ConsentRepository,
   PrivacyRequestRepository,
   SupportRequestRepository,
 } from '../packages/domain/src/index';
@@ -310,6 +312,75 @@ describe('foundation HTTP contract and privacy', () => {
     });
     expect(rejected.statusCode).toBe(400);
     expect(rejected.body).not.toContain('synthetic health payload');
+  });
+  it('lists only the authenticated user consent history with an opaque cursor', async () => {
+    const queried: unknown[] = [];
+    const history = [
+      {
+        eventId: 'cne_syntheticevent00002',
+        purposeVersionId: 'pur_syntheticpurpose001',
+        purposeKey: 'synthetic_context',
+        purposeVersion: 1,
+        purposeTitle: 'Synthetic purpose',
+        noticeText: 'Synthetic notice.',
+        decision: 'revoked' as const,
+        occurredAt: '2026-01-03T00:00:00.000Z',
+        recordedAt: '2026-01-03T00:00:01.000Z',
+      },
+      {
+        eventId: 'cne_syntheticevent00001',
+        purposeVersionId: 'pur_syntheticpurpose001',
+        purposeKey: 'synthetic_context',
+        purposeVersion: 1,
+        purposeTitle: 'Synthetic purpose',
+        noticeText: 'Synthetic notice.',
+        decision: 'granted' as const,
+        occurredAt: '2026-01-02T00:00:00.000Z',
+        recordedAt: '2026-01-02T00:00:01.000Z',
+      },
+    ];
+    const consents: ConsentRepository = {
+      record: async () => {
+        throw new Error('not used');
+      },
+      history: async () => [],
+      current: async () => null,
+      listHistory: async (userId, page) => {
+        queried.push({ userId, page });
+        return history;
+      },
+    };
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => syntheticAccount },
+      consents,
+      logger: createLogger('silent'),
+    });
+    apps.push(app);
+    const response = await app.inject({
+      url: '/v1/consents/history?limit=1',
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(Value.Check(ConsentHistoryResponseSchema, response.json())).toBe(
+      true,
+    );
+    expect(response.json()).toMatchObject({
+      items: [{ decision: 'revoked' }],
+    });
+    expect(response.json().next_cursor).toEqual(expect.any(String));
+    expect(queried).toEqual([
+      { userId: syntheticAccount.id, page: { limit: 2 } },
+    ]);
+    expect(
+      (
+        await app.inject({
+          url: '/v1/consents/history?cursor=invalid___',
+          headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+        })
+      ).statusCode,
+    ).toBe(400);
   });
   it('does not log request payloads, headers, URL values or upstream error details', async () => {
     const { app, logs } = setup(async () => {
