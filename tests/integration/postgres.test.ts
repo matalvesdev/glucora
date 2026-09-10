@@ -366,14 +366,16 @@ describe('real PostgreSQL migrations and readiness', () => {
             }),
           ).rejects.toThrow('Idempotency key reused');
           await expect(
-            ready.supportRequests.listOwn(supportRequest.userId, 10),
+            ready.supportRequests.listOwn(supportRequest.userId, { limit: 10 }),
           ).resolves.toEqual(
             expect.arrayContaining([
               expect.objectContaining({ id: supportRequest.id }),
             ]),
           );
           await expect(
-            ready.supportRequests.listOwn('usr_syntheticconsumer002', 10),
+            ready.supportRequests.listOwn('usr_syntheticconsumer002', {
+              limit: 10,
+            }),
           ).resolves.toEqual([]);
           await expect(
             client.query(

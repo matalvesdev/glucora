@@ -81,13 +81,26 @@ export function createPostgresSupportRequestRepository(
         client.release();
       }
     },
-    async listOwn(userId, limit) {
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+    async listOwn(userId, page) {
+      if (!Number.isInteger(page.limit) || page.limit < 1 || page.limit > 51)
         throw new Error('Invalid support request limit');
+      if (
+        page.before &&
+        (!Number.isFinite(Date.parse(page.before.createdAt)) ||
+          !/^sup_[A-Za-z0-9_-]{16,64}$/.test(page.before.requestId))
+      )
+        throw new Error('Invalid support request cursor');
       const result = await pool.query<Row>(
-        `SELECT ${columns} FROM support.requests WHERE user_id=$1
-         ORDER BY created_at DESC,id DESC LIMIT $2`,
-        [userId, limit],
+        `SELECT ${columns} FROM support.requests
+         WHERE user_id=$1
+           AND ($2::timestamptz IS NULL OR (created_at,id) < ($2::timestamptz,$3))
+         ORDER BY created_at DESC,id DESC LIMIT $4`,
+        [
+          userId,
+          page.before?.createdAt ?? null,
+          page.before?.requestId ?? null,
+          page.limit,
+        ],
       );
       return result.rows.map(map);
     },

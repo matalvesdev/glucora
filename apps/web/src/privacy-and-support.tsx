@@ -93,6 +93,7 @@ export function PrivacyAndSupport() {
   const [supportListState, setSupportListState] = useState<
     'idle' | 'loading' | 'ready' | 'error'
   >('idle');
+  const [supportCursor, setSupportCursor] = useState<string | null>(null);
   const [consentHistory, setConsentHistory] = useState<
     readonly ConsentHistoryViewItem[]
   >([]);
@@ -190,10 +191,12 @@ export function PrivacyAndSupport() {
     }
   }
 
-  async function loadSupportRequests() {
+  async function loadSupportRequests(cursor?: string) {
     setSupportListState('loading');
     try {
-      const response = await fetch('/v1/support-requests?limit=20', {
+      const query = new URLSearchParams({ limit: '20' });
+      if (cursor) query.set('cursor', cursor);
+      const response = await fetch(`/v1/support-requests?${query}`, {
         credentials: 'include',
         cache: 'no-store',
       });
@@ -202,7 +205,14 @@ export function PrivacyAndSupport() {
         setSupportListState('error');
         return;
       }
-      setSupportRequests((body as { items: SupportRequestViewItem[] }).items);
+      const value = body as {
+        items: SupportRequestViewItem[];
+        next_cursor: string | null;
+      };
+      setSupportRequests((current) =>
+        cursor ? [...current, ...value.items] : value.items,
+      );
+      setSupportCursor(value.next_cursor);
       setSupportListState('ready');
     } catch {
       setSupportListState('error');
@@ -465,38 +475,50 @@ export function PrivacyAndSupport() {
               Nenhum pedido de suporte registrado.
             </p>
           ) : (
-            <ul className="mt-5 space-y-3">
-              {supportRequests.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 p-4"
+            <div className="mt-5 space-y-4">
+              <ul className="space-y-3">
+                {supportRequests.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 p-4"
+                  >
+                    <div>
+                      <p className="font-semibold">
+                        {item.category === 'technical_issue'
+                          ? 'Problema técnico'
+                          : item.category === 'account_access'
+                            ? 'Acesso à conta'
+                            : item.category === 'privacy_rights'
+                              ? 'Privacidade e direitos'
+                              : item.category === 'data_quality'
+                                ? 'Qualidade dos dados'
+                                : item.category === 'sharing'
+                                  ? 'Compartilhamento'
+                                  : 'Conteúdo inadequado'}
+                      </p>
+                      <p className="mt-1 text-xs text-stone-500">
+                        {new Intl.DateTimeFormat('pt-BR', {
+                          dateStyle: 'medium',
+                        }).format(new Date(item.created_at))}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
+                      Recebido
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {supportCursor ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={supportListState === 'loading'}
+                  onClick={() => void loadSupportRequests(supportCursor)}
                 >
-                  <div>
-                    <p className="font-semibold">
-                      {item.category === 'technical_issue'
-                        ? 'Problema técnico'
-                        : item.category === 'account_access'
-                          ? 'Acesso à conta'
-                          : item.category === 'privacy_rights'
-                            ? 'Privacidade e direitos'
-                            : item.category === 'data_quality'
-                              ? 'Qualidade dos dados'
-                              : item.category === 'sharing'
-                                ? 'Compartilhamento'
-                                : 'Conteúdo inadequado'}
-                    </p>
-                    <p className="mt-1 text-xs text-stone-500">
-                      {new Intl.DateTimeFormat('pt-BR', {
-                        dateStyle: 'medium',
-                      }).format(new Date(item.created_at))}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
-                    Recebido
-                  </span>
-                </li>
-              ))}
-            </ul>
+                  {supportListState === 'loading' ? 'Carregando…' : 'Ver mais'}
+                </Button>
+              ) : null}
+            </div>
           )}
         </section>
       ) : null}

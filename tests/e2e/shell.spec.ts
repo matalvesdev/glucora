@@ -187,6 +187,7 @@ test('authenticated user can submit minimized privacy and support requests', asy
                 },
               ]
             : [],
+        next_cursor: null,
         request_id: '123e4567-e89b-42d3-a456-426614174000',
       }),
     });
