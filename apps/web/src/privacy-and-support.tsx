@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Value } from '@sinclair/typebox/value';
 import {
+  ConsentHistoryResponseSchema,
   MeSchema,
   PrivacyRequestSchema,
   SupportRequestSchema,
@@ -9,6 +10,17 @@ import { Button } from '@glucora/ui';
 
 type AccessState = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
 type SubmitState = 'idle' | 'loading' | 'success' | 'unavailable' | 'error';
+interface ConsentHistoryViewItem {
+  event_id: string;
+  purpose_version_id: string;
+  purpose_key: string;
+  purpose_version: number;
+  purpose_title: string;
+  notice_text: string;
+  decision: 'granted' | 'denied' | 'revoked';
+  occurred_at: string;
+  recorded_at: string;
+}
 
 async function submitJson(url: string, body: unknown): Promise<Response> {
   return fetch(url, {
@@ -48,6 +60,13 @@ export function PrivacyAndSupport() {
   >('technical_issue');
   const [privacySubmit, setPrivacySubmit] = useState<SubmitState>('idle');
   const [supportSubmit, setSupportSubmit] = useState<SubmitState>('idle');
+  const [consentHistory, setConsentHistory] = useState<
+    readonly ConsentHistoryViewItem[]
+  >([]);
+  const [consentCursor, setConsentCursor] = useState<string | null>(null);
+  const [consentState, setConsentState] = useState<
+    'idle' | 'loading' | 'ready' | 'error'
+  >('idle');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -74,6 +93,38 @@ export function PrivacyAndSupport() {
       });
     return () => controller.abort();
   }, []);
+
+  async function loadConsentHistory(cursor?: string) {
+    setConsentState('loading');
+    try {
+      const query = new URLSearchParams({ limit: '20' });
+      if (cursor) query.set('cursor', cursor);
+      const response = await fetch(`/v1/consents/history?${query}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(ConsentHistoryResponseSchema, body)) {
+        setConsentState('error');
+        return;
+      }
+      const value = body as {
+        items: ConsentHistoryViewItem[];
+        next_cursor: string | null;
+      };
+      setConsentHistory((current) =>
+        cursor ? [...current, ...value.items] : value.items,
+      );
+      setConsentCursor(value.next_cursor);
+      setConsentState('ready');
+    } catch {
+      setConsentState('error');
+    }
+  }
+
+  useEffect(() => {
+    if (access === 'authenticated') void loadConsentHistory();
+  }, [access]);
 
   async function requestPrivacy(event: FormEvent) {
     event.preventDefault();
@@ -229,14 +280,65 @@ export function PrivacyAndSupport() {
         <p className="text-xs font-semibold uppercase tracking-[.16em] text-teal-800">
           Consentimentos
         </p>
-        <h2 className="mt-3 text-xl font-semibold">
-          Nenhum consentimento disponível
-        </h2>
-        <p className="mt-4 leading-relaxed text-stone-600">
-          Quando houver uma finalidade aprovada, você verá o texto e a versão
-          antes de decidir. Também poderá consultar o histórico e revogar quando
-          aplicável.
-        </p>
+        <h2 className="mt-3 text-xl font-semibold">Histórico de decisões</h2>
+        {access !== 'authenticated' ? (
+          <p className="mt-4 leading-relaxed text-stone-600">
+            Entre na sua conta para consultar seu histórico. Novas escolhas só
+            aparecerão quando houver uma finalidade aprovada.
+          </p>
+        ) : consentState === 'error' ? (
+          <p className="mt-4 text-sm text-stone-600">
+            Não foi possível carregar o histórico agora.
+          </p>
+        ) : consentState === 'loading' && consentHistory.length === 0 ? (
+          <p className="mt-4 text-sm text-stone-600">Carregando histórico…</p>
+        ) : consentHistory.length === 0 ? (
+          <p className="mt-4 text-sm text-stone-600">
+            Nenhuma decisão de consentimento registrada.
+          </p>
+        ) : (
+          <div className="mt-5 space-y-4">
+            <ul className="space-y-3">
+              {consentHistory.map((item) => (
+                <li
+                  key={item.event_id}
+                  className="rounded-2xl border border-stone-200 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold">{item.purpose_title}</p>
+                    <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
+                      {item.decision === 'granted'
+                        ? 'Autorizado'
+                        : item.decision === 'revoked'
+                          ? 'Revogado'
+                          : 'Não autorizado'}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-stone-600">
+                    {item.notice_text}
+                  </p>
+                  <p className="mt-2 text-xs text-stone-500">
+                    Versão {item.purpose_version} ·{' '}
+                    {new Intl.DateTimeFormat('pt-BR', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    }).format(new Date(item.occurred_at))}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            {consentCursor ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={consentState === 'loading'}
+                onClick={() => void loadConsentHistory(consentCursor)}
+              >
+                {consentState === 'loading' ? 'Carregando…' : 'Ver mais'}
+              </Button>
+            ) : null}
+          </div>
+        )}
       </section>
     </main>
   );
