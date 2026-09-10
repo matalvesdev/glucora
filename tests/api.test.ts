@@ -230,7 +230,20 @@ describe('foundation HTTP contract and privacy', () => {
       transition: async () => stored,
       findById: async (id, userId) =>
         id === stored.id && userId === stored.userId ? stored : null,
-      history: async () => [],
+      history: async (id, userId) =>
+        id === stored.id && userId === stored.userId
+          ? [
+              {
+                id: 'pre_syntheticevent00001',
+                requestId: stored.id,
+                userId: stored.userId,
+                fromStatus: null,
+                toStatus: 'requested',
+                reasonCode: 'internal_synthetic_reason',
+                occurredAt: stored.requestedAt,
+              },
+            ]
+          : [],
       listOwn: async (userId) => (userId === stored.userId ? [stored] : []),
     };
     const app = buildApp({
@@ -248,6 +261,15 @@ describe('foundation HTTP contract and privacy', () => {
     });
     expect(found.statusCode).toBe(200);
     expect(Value.Check(PrivacyRequestSchema, found.json())).toBe(true);
+    const history = await app.inject({
+      url: `/v1/privacy-requests/${stored.id}/history`,
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(history.statusCode).toBe(200);
+    expect(history.json()).toMatchObject({
+      items: [{ from_status: null, to_status: 'requested' }],
+    });
+    expect(history.body).not.toContain('internal_synthetic_reason');
     const listed = await app.inject({
       url: '/v1/privacy-requests?limit=1',
       headers: { 'x-glucora-dev-actor': syntheticAccount.id },

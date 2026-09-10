@@ -6,6 +6,7 @@ Escopo: G7, acompanhamento paginado do próprio pedido.
 - API exige identidade e conta ativa e valida cursor opaco.
 - A resposta inclui somente tipo, estado, versão e tempos necessários ao acompanhamento.
 - UI carrega após sessão válida, atualiza a lista após criação bem-sucedida e mostra estados sem expor detalhes internos.
+- API de histórico próprio retorna somente transições e tempos, excluindo reason codes internos.
 - PostgreSQL real cobre isolamento entre titulares.
 - Playwright cobre renderização autenticada com dados sintéticos.
 
