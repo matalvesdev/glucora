@@ -64,3 +64,5 @@ H8/H9 em gate técnico: readiness de private beta exige evidências/owners de Pr
 F3/F7 em fundação: retrieval provider-neutral exige corpus versionado e metadados de aprovação, tratando conteúdo recuperado somente como evidência. O harness de evals versionado exige casos normal, edge, adversarial, abstention, privacy e clinical boundary e emite relatório sem payload bruto. ADR-030 permanece PROPOSED; corpus, adapter, thresholds e capabilities reais continuam pendentes.
 
 H5 em fundação: solicitações de suporte do consumidor usam categoria controlada, idempotência, ownership e auditoria atômica, sem texto livre ou payload clínico. ADR-031 permanece PROPOSED; endpoint/UI, identidade de operador, triagem, SLA, paging e fornecedor continuam pendentes.
+
+G8 em fundação: orquestrador provider-neutral executa plano explícito de targets canonical, projection, vendor e backup, exige recibos com evidência e converte erros externos em códigos seguros. ADR-032 permanece PROPOSED; adapters, política de retenção, subprocessadores e transição final continuam pendentes.
