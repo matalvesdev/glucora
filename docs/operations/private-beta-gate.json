@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "enrollment_enabled": false,
+  "gates": {
+    "product": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] },
+    "clinical": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] },
+    "compliance": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] },
+    "security": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] },
+    "operations": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] }
+  }
+}
