@@ -177,7 +177,7 @@ test('authenticated user can submit minimized privacy and support requests', asy
       contentType: 'application/json',
       body: JSON.stringify({
         items:
-          supportListCalls > 1
+          supportListCalls === 2
             ? [
                 {
                   id: 'sup_syntheticrequest0001',
@@ -186,8 +186,17 @@ test('authenticated user can submit minimized privacy and support requests', asy
                   created_at: '2026-01-02T00:00:00.000Z',
                 },
               ]
-            : [],
-        next_cursor: null,
+            : supportListCalls === 3
+              ? [
+                  {
+                    id: 'sup_syntheticrequest0002',
+                    category: 'sharing',
+                    status: 'submitted',
+                    created_at: '2026-01-01T00:00:00.000Z',
+                  },
+                ]
+              : [],
+        next_cursor: supportListCalls === 2 ? 'c3VwcG9ydC1jdXJzb3I' : null,
         request_id: '123e4567-e89b-42d3-a456-426614174000',
       }),
     });
@@ -208,6 +217,11 @@ test('authenticated user can submit minimized privacy and support requests', asy
   await expect(
     page.getByRole('heading', { level: 2, name: 'Pedidos enviados' }),
   ).toBeVisible();
+  const supportSection = page.locator('section').filter({
+    has: page.getByRole('heading', { level: 2, name: 'Pedidos enviados' }),
+  });
+  await supportSection.getByRole('button', { name: 'Ver mais' }).click();
+  await expect(supportSection.getByText('Compartilhamento')).toBeVisible();
   await expect(
     page
       .locator('section')

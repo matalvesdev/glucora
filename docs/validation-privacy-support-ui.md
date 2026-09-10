@@ -7,6 +7,7 @@ Escopo: G1/G3/G7/H5, superfície web responsiva.
 - Requests contêm somente tipo/categoria e idempotência; não enviam titular ou texto livre.
 - Respostas da API são validadas pelos contratos TypeBox compartilhados.
 - A listagem de suporte só é carregada após autenticação, mostra categoria, estado e data, e é atualizada após criação válida.
+- E2E cobre a continuação paginada de suporte com o cursor retornado pela API.
 - Estados de loading, sucesso, indisponibilidade e erro usam mensagens seguras.
 - E2E cobre viewport móvel, ausência de sessão e submissões sintéticas.
 
