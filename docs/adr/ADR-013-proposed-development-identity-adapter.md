@@ -1,6 +1,6 @@
 # ADR-013 — Development identity adapter
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Context
 

@@ -1,6 +1,6 @@
 # ADR-022: armazenamento da projeção de timeline
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

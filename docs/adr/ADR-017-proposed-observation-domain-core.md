@@ -1,6 +1,6 @@
 # ADR-017: núcleo canônico de observações quantitativas
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
 
 ## Contexto
 

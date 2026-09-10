@@ -1,6 +1,6 @@
 # ADR-035: API de solicitações de suporte
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

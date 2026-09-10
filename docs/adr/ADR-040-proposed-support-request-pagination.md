@@ -1,6 +1,6 @@
 # ADR-040: paginação própria de solicitações de suporte
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

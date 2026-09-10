@@ -1,6 +1,6 @@
 # ADR-014: modelo de eventos de consentimento
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
 
 ## Contexto
 

@@ -1,6 +1,6 @@
 # ADR-036: interface condicionada de privacidade e suporte
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

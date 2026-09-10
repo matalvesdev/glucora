@@ -1,6 +1,6 @@
 # ADR-033: artefato estruturado de exportação
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

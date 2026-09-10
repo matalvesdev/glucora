@@ -1,6 +1,6 @@
 # ADR-027: adapter local de backup e restore
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

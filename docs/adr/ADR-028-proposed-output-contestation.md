@@ -1,6 +1,6 @@
 # ADR-028: contestação de outputs
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

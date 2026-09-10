@@ -1,6 +1,6 @@
 # ADR-030: retrieval aprovado e evals versionados
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

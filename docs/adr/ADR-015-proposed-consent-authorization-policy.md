@@ -1,6 +1,6 @@
 # ADR-015: política de autorização baseada em consentimento
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
 
 ## Contexto
 

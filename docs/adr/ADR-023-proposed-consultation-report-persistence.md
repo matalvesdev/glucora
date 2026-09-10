@@ -1,6 +1,6 @@
 # ADR-023: persistência de relatórios determinísticos de consulta
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

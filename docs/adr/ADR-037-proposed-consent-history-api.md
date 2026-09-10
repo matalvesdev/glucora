@@ -1,6 +1,6 @@
 # ADR-037: API de histórico de consentimentos
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 

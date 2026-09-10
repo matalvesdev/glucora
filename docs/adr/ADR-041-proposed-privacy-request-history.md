@@ -1,6 +1,6 @@
 # ADR-041: histórico próprio de solicitações de privacidade
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto e proposta
 
