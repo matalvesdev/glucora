@@ -8,6 +8,7 @@ import { createPostgresConsultationReportRepository } from './modules/consultati
 import { createPostgresPrivacyRequestRepository } from './modules/privacy/privacy-request-repository';
 import { createPostgresShareGrantRepository } from './modules/sharing/share-grant-repository';
 import { createPostgresOutputContestationRepository } from './modules/feedback/output-contestation-repository';
+import { createPostgresSupportRequestRepository } from './modules/support/support-request-repository';
 export function createDatabase(connectionString: string) {
   const pool = new pg.Pool({
     connectionString,
@@ -29,6 +30,7 @@ export function createDatabase(connectionString: string) {
   const privacyRequests = createPostgresPrivacyRequestRepository(pool);
   const shareGrants = createPostgresShareGrantRepository(pool);
   const outputContestations = createPostgresOutputContestationRepository(pool);
+  const supportRequests = createPostgresSupportRequestRepository(pool);
   return {
     async checkReadiness() {
       const result = await pool.query<{ version: string }>(
@@ -46,5 +48,6 @@ export function createDatabase(connectionString: string) {
     privacyRequests,
     shareGrants,
     outputContestations,
+    supportRequests,
   };
 }
