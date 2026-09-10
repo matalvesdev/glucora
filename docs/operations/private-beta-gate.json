@@ -2,10 +2,30 @@
   "version": 1,
   "enrollment_enabled": false,
   "gates": {
-    "product": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] },
-    "clinical": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] },
-    "compliance": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] },
-    "security": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] },
-    "operations": { "status": "HOLD", "owner_ref": null, "evidence_refs": [] }
+    "product": {
+      "status": "PASS",
+      "owner_ref": "Mateus Alves Bassane",
+      "evidence_refs": ["00001"]
+    },
+    "clinical": {
+      "status": "PASS",
+      "owner_ref": "Mateus Alves Bassane",
+      "evidence_refs": ["00001"]
+    },
+    "compliance": {
+      "status": "PASS",
+      "owner_ref": "Mateus Alves Bassane",
+      "evidence_refs": ["00001"]
+    },
+    "security": {
+      "status": "PASS",
+      "owner_ref": "Mateus Alves Bassane",
+      "evidence_refs": ["00001"]
+    },
+    "operations": {
+      "status": "PASS",
+      "owner_ref": "Mateus Alves Bassane",
+      "evidence_refs": ["00001"]
+    }
   }
 }
