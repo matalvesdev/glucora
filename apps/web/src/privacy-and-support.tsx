@@ -5,6 +5,7 @@ import {
   MeSchema,
   PrivacyRequestSchema,
   PrivacyRequestListSchema,
+  PrivacyRequestHistorySchema,
   SupportRequestSchema,
   SupportRequestListSchema,
 } from '@glucora/contracts';
@@ -35,6 +36,11 @@ interface PrivacyRequestViewItem {
     | 'denied'
     | 'cancelled';
   requested_at: string;
+}
+interface PrivacyRequestHistoryViewItem {
+  from_status: PrivacyRequestViewItem['status'] | null;
+  to_status: PrivacyRequestViewItem['status'];
+  occurred_at: string;
 }
 interface SupportRequestViewItem {
   id: string;
@@ -108,6 +114,12 @@ export function PrivacyAndSupport() {
   const [privacyListState, setPrivacyListState] = useState<
     'idle' | 'loading' | 'ready' | 'error'
   >('idle');
+  const [privacyHistory, setPrivacyHistory] = useState<
+    Readonly<Record<string, readonly PrivacyRequestHistoryViewItem[]>>
+  >({});
+  const [privacyHistoryLoading, setPrivacyHistoryLoading] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -188,6 +200,33 @@ export function PrivacyAndSupport() {
       setPrivacyListState('ready');
     } catch {
       setPrivacyListState('error');
+    }
+  }
+
+  async function loadPrivacyHistory(id: string) {
+    if (privacyHistory[id]) {
+      setPrivacyHistory((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+    setPrivacyHistoryLoading(id);
+    try {
+      const response = await fetch(`/v1/privacy-requests/${id}/history`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(PrivacyRequestHistorySchema, body))
+        return;
+      setPrivacyHistory((current) => ({
+        ...current,
+        [id]: (body as { items: PrivacyRequestHistoryViewItem[] }).items,
+      }));
+    } finally {
+      setPrivacyHistoryLoading(null);
     }
   }
 
@@ -425,21 +464,62 @@ export function PrivacyAndSupport() {
                         }).format(new Date(item.requested_at))}
                       </p>
                     </div>
-                    <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
-                      {item.status === 'requested'
-                        ? 'Recebido'
-                        : item.status === 'identity_verification_required'
-                          ? 'Verificação necessária'
-                          : item.status === 'in_review'
-                            ? 'Em análise'
-                            : item.status === 'fulfilled'
-                              ? 'Concluído'
-                              : item.status === 'partially_fulfilled'
-                                ? 'Concluído parcialmente'
-                                : item.status === 'denied'
-                                  ? 'Indeferido'
-                                  : 'Cancelado'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
+                        {item.status === 'requested'
+                          ? 'Recebido'
+                          : item.status === 'identity_verification_required'
+                            ? 'Verificação necessária'
+                            : item.status === 'in_review'
+                              ? 'Em análise'
+                              : item.status === 'fulfilled'
+                                ? 'Concluído'
+                                : item.status === 'partially_fulfilled'
+                                  ? 'Concluído parcialmente'
+                                  : item.status === 'denied'
+                                    ? 'Indeferido'
+                                    : 'Cancelado'}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={privacyHistoryLoading === item.id}
+                        onClick={() => void loadPrivacyHistory(item.id)}
+                      >
+                        {privacyHistoryLoading === item.id
+                          ? 'Carregando…'
+                          : privacyHistory[item.id]
+                            ? 'Ocultar histórico'
+                            : 'Ver histórico'}
+                      </Button>
+                    </div>
+                    {privacyHistory[item.id] ? (
+                      <ol className="w-full space-y-2 border-t border-stone-100 pt-3 text-sm text-stone-600">
+                        {(privacyHistory[item.id] ?? []).map((event, index) => (
+                          <li key={`${event.occurred_at}-${index}`}>
+                            {event.to_status === 'requested'
+                              ? 'Pedido recebido'
+                              : event.to_status ===
+                                  'identity_verification_required'
+                                ? 'Verificação necessária'
+                                : event.to_status === 'in_review'
+                                  ? 'Em análise'
+                                  : event.to_status === 'fulfilled'
+                                    ? 'Concluído'
+                                    : event.to_status === 'partially_fulfilled'
+                                      ? 'Concluído parcialmente'
+                                      : event.to_status === 'denied'
+                                        ? 'Indeferido'
+                                        : 'Cancelado'}{' '}
+                            ·{' '}
+                            {new Intl.DateTimeFormat('pt-BR', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            }).format(new Date(event.occurred_at))}
+                          </li>
+                        ))}
+                      </ol>
+                    ) : null}
                   </li>
                 ))}
               </ul>

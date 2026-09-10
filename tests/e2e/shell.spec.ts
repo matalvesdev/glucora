@@ -157,6 +157,29 @@ test('authenticated user can submit minimized privacy and support requests', asy
       }),
     });
   });
+  await page.route(
+    '**/v1/privacy-requests/dsr_syntheticrequest0001/history',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [
+            {
+              from_status: null,
+              to_status: 'requested',
+              occurred_at: '2026-01-02T00:00:00.000Z',
+            },
+            {
+              from_status: 'requested',
+              to_status: 'in_review',
+              occurred_at: '2026-01-03T00:00:00.000Z',
+            },
+          ],
+          request_id: '123e4567-e89b-42d3-a456-426614174000',
+        }),
+      }),
+  );
   await page.route('**/v1/support-requests', async (route) => {
     payloads.push(route.request().postDataJSON());
     await route.fulfill({
@@ -208,10 +231,12 @@ test('authenticated user can submit minimized privacy and support requests', asy
   await expect(page.getByText('Autorizado')).toBeVisible();
   await expect(page.getByText('Exportação de dados')).toBeVisible();
   await expect(page.getByText('Em análise')).toBeVisible();
+  await page.getByRole('button', { name: 'Ver histórico' }).click();
+  await expect(page.getByText('Pedido recebido')).toBeVisible();
   await page.getByLabel('Tipo de solicitação').selectOption('export');
   await page.getByRole('button', { name: 'Enviar solicitação' }).click();
   await expect(page.getByText('Solicitação registrada.')).toBeVisible();
-  await expect(page.getByText('Recebido')).toBeVisible();
+  await expect(page.getByText('Recebido', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Enviar pedido' }).click();
   await expect(page.getByText('Pedido de suporte registrado.')).toBeVisible();
   await expect(

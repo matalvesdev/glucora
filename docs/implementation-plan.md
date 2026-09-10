@@ -81,4 +81,4 @@ G4 em UI: após sessão válida, a área de privacidade mostra finalidade, texto
 
 G7 em API/UI: listagem própria de solicitações de privacidade usa ownership, limite fechado e cursor opaco; a interface mostra tipo e estado sem eventos internos e a atualiza após criação válida. ADR-039 permanece PROPOSED; verificação, transições e fulfillment continuam pendentes.
 
-G7 em API: histórico próprio de solicitação expõe somente transições e tempos append-only, após ownership, sem códigos internos, identidades ou detalhes de fulfillment. ADR-041 permanece PROPOSED; verificação, transições e fulfillment continuam pendentes.
+G7 em API/UI: histórico próprio de solicitação expõe e apresenta somente transições e tempos append-only, após ownership, sem códigos internos, identidades ou detalhes de fulfillment. ADR-041 permanece PROPOSED; verificação, transições e fulfillment continuam pendentes.
