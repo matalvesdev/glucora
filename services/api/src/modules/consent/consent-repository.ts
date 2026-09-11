@@ -1,10 +1,16 @@
 import type { Pool } from 'pg';
 import type {
+  ConsentDecisionRecorder,
   ConsentEvent,
   ConsentHistoryItem,
+  ConsentPurposeRepository,
+  ConsentPurposeVersion,
+  PublishedConsentPurpose,
   ConsentRepository,
+  RecordConsentDecisionWithAudit,
   RecordConsentDecision,
 } from '@glucora/domain';
+import { insertAuditEvent } from '../audit/audit-repository';
 
 interface ConsentEventRow {
   id: string;
@@ -22,6 +28,18 @@ interface ConsentHistoryRow extends ConsentEventRow {
   purpose_title: string;
   notice_text: string;
 }
+interface ConsentPurposeRow {
+  id: string;
+  purpose_key: string;
+  version: number;
+  status: ConsentPurposeVersion['status'];
+  title: string;
+  notice_text: string;
+  legal_basis_ref: string;
+  retention_policy_ref: string;
+  effective_from: Date | null;
+  retired_at: Date | null;
+}
 
 function mapEvent(row: ConsentEventRow): ConsentEvent {
   return {
@@ -34,6 +52,64 @@ function mapEvent(row: ConsentEventRow): ConsentEvent {
     occurredAt: row.occurred_at.toISOString(),
     recordedAt: row.recorded_at.toISOString(),
   };
+}
+
+function mapPurpose(row: ConsentPurposeRow): PublishedConsentPurpose {
+  return {
+    id: row.id,
+    purposeKey: row.purpose_key,
+    version: row.version,
+    status: row.status,
+    title: row.title,
+    noticeText: row.notice_text,
+    legalBasisRef: row.legal_basis_ref,
+    retentionPolicyRef: row.retention_policy_ref,
+    effectiveFrom: row.effective_from?.toISOString() ?? null,
+    retiredAt: row.retired_at?.toISOString() ?? null,
+  };
+}
+
+async function recordEvent(
+  client: Pool | import('pg').PoolClient,
+  input: RecordConsentDecision,
+): Promise<ConsentEvent> {
+  const result = await client.query<ConsentEventRow>(
+    `WITH inserted AS (
+       INSERT INTO consent.events
+       (id, user_id, purpose_version_id, event_type, channel, idempotency_key, occurred_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (user_id, purpose_version_id, idempotency_key) DO NOTHING
+       RETURNING id, user_id, purpose_version_id, event_type, channel,
+                 idempotency_key, occurred_at, recorded_at
+     )
+     SELECT * FROM inserted
+     UNION ALL
+     SELECT id, user_id, purpose_version_id, event_type, channel,
+            idempotency_key, occurred_at, recorded_at
+     FROM consent.events
+     WHERE user_id = $2 AND purpose_version_id = $3 AND idempotency_key = $6
+     LIMIT 1`,
+    [
+      input.id,
+      input.userId,
+      input.purposeVersionId,
+      input.decision,
+      input.channel,
+      input.idempotencyKey,
+      input.occurredAt,
+    ],
+  );
+  const row = result.rows[0];
+  if (!row) throw new Error('Consent event was not recorded');
+  const event = mapEvent(row);
+  if (
+    event.decision !== input.decision ||
+    event.channel !== input.channel ||
+    (event.id === input.id &&
+      event.occurredAt !== new Date(input.occurredAt).toISOString())
+  )
+    throw new Error('Idempotency key reused with different consent data');
+  return event;
 }
 
 function mapHistory(row: ConsentHistoryRow): ConsentHistoryItem {
@@ -53,44 +129,7 @@ function mapHistory(row: ConsentHistoryRow): ConsentHistoryItem {
 export function createPostgresConsentRepository(pool: Pool): ConsentRepository {
   return {
     async record(input: RecordConsentDecision): Promise<ConsentEvent> {
-      const result = await pool.query<ConsentEventRow>(
-        `WITH inserted AS (
-           INSERT INTO consent.events
-           (id, user_id, purpose_version_id, event_type, channel, idempotency_key, occurred_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (user_id, purpose_version_id, idempotency_key) DO NOTHING
-           RETURNING id, user_id, purpose_version_id, event_type, channel,
-                     idempotency_key, occurred_at, recorded_at
-         )
-         SELECT * FROM inserted
-         UNION ALL
-         SELECT id, user_id, purpose_version_id, event_type, channel,
-                idempotency_key, occurred_at, recorded_at
-         FROM consent.events
-         WHERE user_id = $2 AND purpose_version_id = $3 AND idempotency_key = $6
-         LIMIT 1`,
-        [
-          input.id,
-          input.userId,
-          input.purposeVersionId,
-          input.decision,
-          input.channel,
-          input.idempotencyKey,
-          input.occurredAt,
-        ],
-      );
-      const row = result.rows[0];
-      if (!row) throw new Error('Consent event was not recorded');
-      const event = mapEvent(row);
-      if (
-        event.id !== input.id ||
-        event.decision !== input.decision ||
-        event.channel !== input.channel ||
-        event.occurredAt !== new Date(input.occurredAt).toISOString()
-      ) {
-        throw new Error('Idempotency key reused with different consent data');
-      }
-      return event;
+      return recordEvent(pool, input);
     },
     async history(userId, purposeVersionId): Promise<ConsentEvent[]> {
       const result = await pool.query<ConsentEventRow>(
@@ -143,6 +182,62 @@ export function createPostgresConsentRepository(pool: Pool): ConsentRepository {
         ],
       );
       return result.rows.map(mapHistory);
+    },
+  };
+}
+
+export function createPostgresConsentPurposeRepository(
+  pool: Pool,
+): ConsentPurposeRepository {
+  return {
+    async listPublished(evaluatedAt) {
+      const result = await pool.query<ConsentPurposeRow>(
+        `SELECT id,purpose_key,version,status,title,notice_text,legal_basis_ref,
+                retention_policy_ref,effective_from,retired_at
+         FROM consent.purpose_versions
+         WHERE status='published' AND effective_from <= $1
+           AND (retired_at IS NULL OR retired_at > $1)
+         ORDER BY purpose_key ASC,version DESC`,
+        [evaluatedAt],
+      );
+      return result.rows.map(mapPurpose);
+    },
+  };
+}
+
+export function createPostgresConsentDecisionRecorder(
+  pool: Pool,
+): ConsentDecisionRecorder {
+  return {
+    async recordWithAudit(input: RecordConsentDecisionWithAudit) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const event = await recordEvent(client, input);
+        if (event.id === input.id) {
+          await insertAuditEvent(client, {
+            id: input.audit.id,
+            eventKey: 'consent.decision_recorded',
+            actorType: 'consumer',
+            actorId: input.userId,
+            subjectId: input.userId,
+            resourceType: 'consent_event',
+            resourceId: event.id,
+            action: input.decision,
+            outcome: 'succeeded',
+            requestId: input.audit.requestId,
+            retentionPolicyRef: input.audit.retentionPolicyRef,
+            occurredAt: input.audit.occurredAt,
+          });
+        }
+        await client.query('COMMIT');
+        return event;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
     },
   };
 }

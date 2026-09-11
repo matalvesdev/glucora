@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Value } from '@sinclair/typebox/value';
 import {
+  ConsentDecisionResponseSchema,
   ConsentHistoryResponseSchema,
+  ConsentPurposeListSchema,
   MeSchema,
   PrivacyRequestSchema,
   PrivacyRequestListSchema,
@@ -23,6 +25,16 @@ interface ConsentHistoryViewItem {
   decision: 'granted' | 'denied' | 'revoked';
   occurred_at: string;
   recorded_at: string;
+}
+interface ConsentPurposeViewItem {
+  id: string;
+  purpose_key: string;
+  version: number;
+  title: string;
+  notice_text: string;
+  legal_basis_ref: string;
+  retention_policy_ref: string;
+  current_decision: 'granted' | 'denied' | 'revoked' | null;
 }
 interface PrivacyRequestViewItem {
   id: string;
@@ -107,6 +119,15 @@ export function PrivacyAndSupport() {
   const [consentState, setConsentState] = useState<
     'idle' | 'loading' | 'ready' | 'error'
   >('idle');
+  const [consentPurposes, setConsentPurposes] = useState<
+    readonly ConsentPurposeViewItem[]
+  >([]);
+  const [consentPurposeState, setConsentPurposeState] = useState<
+    'idle' | 'loading' | 'ready' | 'error'
+  >('idle');
+  const [consentDecisionState, setConsentDecisionState] = useState<
+    Record<string, SubmitState>
+  >({});
   const [privacyRequests, setPrivacyRequests] = useState<
     readonly PrivacyRequestViewItem[]
   >([]);
@@ -172,6 +193,59 @@ export function PrivacyAndSupport() {
       setConsentState('ready');
     } catch {
       setConsentState('error');
+    }
+  }
+
+  async function loadConsentPurposes() {
+    setConsentPurposeState('loading');
+    try {
+      const response = await fetch('/v1/consent-purposes', {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(ConsentPurposeListSchema, body)) {
+        setConsentPurposeState('error');
+        return;
+      }
+      setConsentPurposes((body as { items: ConsentPurposeViewItem[] }).items);
+      setConsentPurposeState('ready');
+    } catch {
+      setConsentPurposeState('error');
+    }
+  }
+
+  async function recordConsentDecision(
+    purposeVersionId: string,
+    decision: 'granted' | 'revoked',
+  ) {
+    setConsentDecisionState((current) => ({
+      ...current,
+      [purposeVersionId]: 'loading',
+    }));
+    try {
+      const response = await submitJson('/v1/consent-decisions', {
+        purpose_version_id: purposeVersionId,
+        decision,
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(ConsentDecisionResponseSchema, body)) {
+        setConsentDecisionState((current) => ({
+          ...current,
+          [purposeVersionId]: 'error',
+        }));
+        return;
+      }
+      setConsentDecisionState((current) => ({
+        ...current,
+        [purposeVersionId]: 'success',
+      }));
+      await Promise.all([loadConsentPurposes(), loadConsentHistory()]);
+    } catch {
+      setConsentDecisionState((current) => ({
+        ...current,
+        [purposeVersionId]: 'error',
+      }));
     }
   }
 
@@ -261,6 +335,7 @@ export function PrivacyAndSupport() {
   useEffect(() => {
     if (access === 'authenticated') {
       void loadConsentHistory();
+      void loadConsentPurposes();
       void loadPrivacyRequests();
       void loadSupportRequests();
     }
@@ -607,53 +682,116 @@ export function PrivacyAndSupport() {
         <p className="text-xs font-semibold uppercase tracking-[.16em] text-teal-800">
           Consentimentos
         </p>
-        <h2 className="mt-3 text-xl font-semibold">Histórico de decisões</h2>
+        <h2 className="mt-3 text-xl font-semibold">Suas escolhas</h2>
         {access !== 'authenticated' ? (
           <p className="mt-4 leading-relaxed text-stone-600">
-            Entre na sua conta para consultar seu histórico. Novas escolhas só
-            aparecerão quando houver uma finalidade aprovada.
+            Entre na sua conta para consultar e controlar seus consentimentos.
           </p>
-        ) : consentState === 'error' ? (
+        ) : consentPurposeState === 'error' ? (
           <p className="mt-4 text-sm text-stone-600">
-            Não foi possível carregar o histórico agora.
+            Não foi possível carregar as finalidades agora.
           </p>
-        ) : consentState === 'loading' && consentHistory.length === 0 ? (
-          <p className="mt-4 text-sm text-stone-600">Carregando histórico…</p>
-        ) : consentHistory.length === 0 ? (
+        ) : consentPurposeState === 'loading' ? (
+          <p className="mt-4 text-sm text-stone-600">Carregando finalidades…</p>
+        ) : consentPurposes.length === 0 ? (
           <p className="mt-4 text-sm text-stone-600">
-            Nenhuma decisão de consentimento registrada.
+            Não há finalidades disponíveis neste momento.
           </p>
         ) : (
           <div className="mt-5 space-y-4">
             <ul className="space-y-3">
-              {consentHistory.map((item) => (
-                <li
-                  key={item.event_id}
-                  className="rounded-2xl border border-stone-200 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold">{item.purpose_title}</p>
-                    <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
-                      {item.decision === 'granted'
-                        ? 'Autorizado'
-                        : item.decision === 'revoked'
-                          ? 'Revogado'
-                          : 'Não autorizado'}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-stone-600">
-                    {item.notice_text}
-                  </p>
-                  <p className="mt-2 text-xs text-stone-500">
-                    Versão {item.purpose_version} ·{' '}
-                    {new Intl.DateTimeFormat('pt-BR', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    }).format(new Date(item.occurred_at))}
-                  </p>
-                </li>
-              ))}
+              {consentPurposes.map((purpose) => {
+                const active = purpose.current_decision === 'granted';
+                const decisionState =
+                  consentDecisionState[purpose.id] ?? 'idle';
+                return (
+                  <li
+                    key={purpose.id}
+                    className="rounded-2xl border border-stone-200 p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-semibold">{purpose.title}</p>
+                      <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
+                        {active ? 'Autorizado' : 'Não autorizado'}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-stone-600">
+                      {purpose.notice_text}
+                    </p>
+                    <p className="mt-2 text-xs text-stone-500">
+                      {purpose.legal_basis_ref} · {purpose.retention_policy_ref}
+                    </p>
+                    <Button
+                      type="button"
+                      variant={active ? 'outline' : 'default'}
+                      className="mt-4"
+                      disabled={decisionState === 'loading'}
+                      onClick={() =>
+                        void recordConsentDecision(
+                          purpose.id,
+                          active ? 'revoked' : 'granted',
+                        )
+                      }
+                    >
+                      {decisionState === 'loading'
+                        ? 'Salvando…'
+                        : active
+                          ? 'Revogar consentimento'
+                          : 'Autorizar'}
+                    </Button>
+                    {decisionState === 'error' ? (
+                      <p className="mt-2 text-sm text-stone-600">
+                        Não foi possível salvar sua escolha.
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
+            <h3 className="pt-3 text-lg font-semibold">
+              Histórico de decisões
+            </h3>
+            {consentState === 'error' ? (
+              <p className="text-sm text-stone-600">
+                Não foi possível carregar o histórico agora.
+              </p>
+            ) : consentState === 'loading' && consentHistory.length === 0 ? (
+              <p className="text-sm text-stone-600">Carregando histórico…</p>
+            ) : consentHistory.length === 0 ? (
+              <p className="text-sm text-stone-600">
+                Nenhuma decisão de consentimento registrada.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {consentHistory.map((item) => (
+                  <li
+                    key={item.event_id}
+                    className="rounded-2xl border border-stone-200 p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{item.purpose_title}</p>
+                      <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
+                        {item.decision === 'granted'
+                          ? 'Autorizado'
+                          : item.decision === 'revoked'
+                            ? 'Revogado'
+                            : 'Não autorizado'}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-stone-600">
+                      {item.notice_text}
+                    </p>
+                    <p className="mt-2 text-xs text-stone-500">
+                      Versão {item.purpose_version} ·{' '}
+                      {new Intl.DateTimeFormat('pt-BR', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }).format(new Date(item.occurred_at))}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
             {consentCursor ? (
               <Button
                 type="button"

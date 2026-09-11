@@ -1,6 +1,10 @@
 import pg from 'pg';
 import { createPostgresUserAccountRepository } from './modules/identity/user-account-repository';
-import { createPostgresConsentRepository } from './modules/consent/consent-repository';
+import {
+  createPostgresConsentDecisionRecorder,
+  createPostgresConsentPurposeRepository,
+  createPostgresConsentRepository,
+} from './modules/consent/consent-repository';
 import { createPostgresAuditRepository } from './modules/audit/audit-repository';
 import { createPostgresObservationRepository } from './modules/measurements/observation-repository';
 import { createPostgresTimelineRepository } from './modules/timeline/timeline-repository';
@@ -23,6 +27,8 @@ export function createDatabase(connectionString: string) {
   pool.on('error', () => {});
   const users = createPostgresUserAccountRepository(pool);
   const consents = createPostgresConsentRepository(pool);
+  const consentPurposes = createPostgresConsentPurposeRepository(pool);
+  const consentDecisions = createPostgresConsentDecisionRecorder(pool);
   const audit = createPostgresAuditRepository(pool);
   const observations = createPostgresObservationRepository(pool);
   const timeline = createPostgresTimelineRepository(pool);
@@ -41,6 +47,8 @@ export function createDatabase(connectionString: string) {
     close: () => pool.end(),
     users,
     consents,
+    consentPurposes,
+    consentDecisions,
     audit,
     observations,
     timeline,

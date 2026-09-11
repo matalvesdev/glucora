@@ -214,6 +214,57 @@ export const ConsentHistoryResponseSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export const ConsentPurposeSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^pur_[A-Za-z0-9_-]{16,64}$' }),
+    purpose_key: Type.String({ pattern: '^[a-z][a-z0-9_]{2,63}$' }),
+    version: Type.Integer({ minimum: 1 }),
+    title: Type.String({ minLength: 1, maxLength: 160 }),
+    notice_text: Type.String({ minLength: 1, maxLength: 4000 }),
+    legal_basis_ref: Type.String({ minLength: 1, maxLength: 200 }),
+    retention_policy_ref: Type.String({ minLength: 1, maxLength: 200 }),
+    current_decision: Type.Union([
+      Type.Literal('granted'),
+      Type.Literal('denied'),
+      Type.Literal('revoked'),
+      Type.Null(),
+    ]),
+  },
+  { additionalProperties: false },
+);
+export const ConsentPurposeListSchema = Type.Object(
+  {
+    items: Type.Array(ConsentPurposeSchema, { maxItems: 50 }),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
+export const RecordConsentDecisionBodySchema = Type.Object(
+  {
+    purpose_version_id: Type.String({ pattern: '^pur_[A-Za-z0-9_-]{16,64}$' }),
+    decision: Type.Union([
+      Type.Literal('granted'),
+      Type.Literal('denied'),
+      Type.Literal('revoked'),
+    ]),
+  },
+  { additionalProperties: false },
+);
+export const ConsentDecisionResponseSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^cne_[A-Za-z0-9_-]{16,64}$' }),
+    purpose_version_id: Type.String({ pattern: '^pur_[A-Za-z0-9_-]{16,64}$' }),
+    decision: Type.Union([
+      Type.Literal('granted'),
+      Type.Literal('denied'),
+      Type.Literal('revoked'),
+    ]),
+    occurred_at: IsoTimestampSchema,
+    recorded_at: IsoTimestampSchema,
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
 export type HealthResponse = Static<typeof HealthSchema>;
 export type ErrorResponse = Static<typeof ErrorSchema>;
 export type MeResponse = Static<typeof MeSchema>;
