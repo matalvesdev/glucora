@@ -23,6 +23,8 @@ A aprovação deste gate de engenharia não significa aprovação dos gates clí
 
 Registro de decisão: ADR-013 a ADR-041 foram aceitos por Mateus Alves Bassane em 2026-09-10, com evidência `00001`. As referências históricas a `PROPOSED` nas entradas abaixo descrevem o estado no momento daquele slice e são substituídas por este registro; limites que os ADRs mantêm abertos continuam abertos até uma decisão específica posterior.
 
+ADR-042 foi aceito por Mateus Alves Bassane em 2026-09-11, com evidência `00001`; a ativação de cada fluxo continua condicionada à implementação e validação dos controles definidos nessa decisão.
+
 B Identity/Consent → C Longitudinal Data → D Timeline → E Consultation → F Low-risk AI → G Privacy → H Operational Readiness.
 Antes de B: atualizar leitura de Product/Clinical/Compliance, contrato de identidade, propósito/consentimento, matriz de autorização e decisão de adapter local versus provider. Não escolher provider estratégico implicitamente.
 F exige contexto/evidência/evals; H exige responsáveis, backup/restore e aprovação operacional antes de beta.

@@ -1,6 +1,6 @@
 # ADR-042: política inicial brasileira de finalidades, bases legais e retenção
 
-Status: PROPOSED
+Status: ACCEPTED
 
 ## Contexto
 
