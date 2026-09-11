@@ -1,6 +1,6 @@
 # ADR-043: política de exclusão canônica de dados de saúde
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
 
 ## Contexto
 

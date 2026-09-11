@@ -25,7 +25,7 @@ Registro de decisão: ADR-013 a ADR-041 foram aceitos por Mateus Alves Bassane e
 
 ADR-042 foi aceito por Mateus Alves Bassane em 2026-09-11, com evidência `00001`; a ativação de cada fluxo continua condicionada à implementação e validação dos controles definidos nessa decisão.
 
-ADR-043 foi proposta para classificar a exclusão canônica de dados de saúde e a evidência mínima conservada. A captura de saúde permanece bloqueada até seu aceite e implementação validada.
+ADR-043 foi aceita para classificar a exclusão canônica de dados de saúde e a evidência mínima conservada. A captura de saúde permanece bloqueada até sua implementação validada.
 
 O inventário inicial de tratamento em `docs/compliance/data-processing-inventory.md` registra as categorias aprovadas na ADR-042, seus responsáveis, operadores ainda não aprovados e evidências de eliminação pendentes.
 
