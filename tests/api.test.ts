@@ -6,7 +6,9 @@ import { Value } from '@sinclair/typebox/value';
 import { HealthSchema, ErrorSchema } from '../packages/contracts/src/index';
 import {
   MeSchema,
+  ConsentDecisionResponseSchema,
   ConsentHistoryResponseSchema,
+  ConsentPurposeListSchema,
   PrivacyRequestSchema,
   PrivacyRequestListSchema,
   SupportRequestListSchema,
@@ -15,6 +17,8 @@ import {
 import { createDevelopmentIdentityAdapter } from '../services/api/src/modules/identity/identity-adapter';
 import type {
   ConsentRepository,
+  ConsentDecisionRecorder,
+  ConsentPurposeRepository,
   PrivacyRequestRepository,
   SupportRequestRepository,
 } from '../packages/domain/src/index';
@@ -448,6 +452,125 @@ describe('foundation HTTP contract and privacy', () => {
         await app.inject({
           url: '/v1/consents/history?cursor=invalid___',
           headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+        })
+      ).statusCode,
+    ).toBe(400);
+  });
+  it('lists only published consent purposes and records an auditable decision', async () => {
+    const purposes: ConsentPurposeRepository = {
+      listPublished: async () => [
+        {
+          id: 'pur_syntheticpurpose001',
+          purposeKey: 'self_care_health_data',
+          version: 1,
+          status: 'published',
+          title: 'Synthetic self-care purpose',
+          noticeText: 'Synthetic consent notice.',
+          legalBasisRef: 'LGPD art. 11, I',
+          retentionPolicyRef: 'synthetic-retention-policy',
+          effectiveFrom: '2026-01-01T00:00:00.000Z',
+          retiredAt: null,
+        },
+      ],
+    };
+    const recorded: unknown[] = [];
+    const recorder: ConsentDecisionRecorder = {
+      recordWithAudit: async (input) => {
+        recorded.push(input);
+        return {
+          id: input.id,
+          userId: input.userId,
+          purposeVersionId: input.purposeVersionId,
+          decision: input.decision,
+          channel: input.channel,
+          idempotencyKey: input.idempotencyKey,
+          occurredAt: input.occurredAt,
+          recordedAt: input.occurredAt,
+        };
+      },
+    };
+    const consents: ConsentRepository = {
+      record: async () => {
+        throw new Error('not used');
+      },
+      history: async () => [],
+      current: async () => null,
+      listHistory: async () => [],
+    };
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => syntheticAccount },
+      consents,
+      consentPurposes: purposes,
+      consentDecisions: recorder,
+      logger: createLogger('silent'),
+    });
+    apps.push(app);
+    const listed = await app.inject({
+      url: '/v1/consent-purposes',
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(Value.Check(ConsentPurposeListSchema, listed.json())).toBe(true);
+    expect(listed.json()).toMatchObject({
+      items: [{ current_decision: null, purpose_key: 'self_care_health_data' }],
+    });
+    const created = await app.inject({
+      method: 'POST',
+      url: '/v1/consent-decisions',
+      headers: {
+        'x-glucora-dev-actor': syntheticAccount.id,
+        'idempotency-key': 'synthetic-consent-decision-1',
+      },
+      payload: {
+        purpose_version_id: 'pur_syntheticpurpose001',
+        decision: 'granted',
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(Value.Check(ConsentDecisionResponseSchema, created.json())).toBe(
+      true,
+    );
+    expect(recorded).toMatchObject([
+      {
+        userId: syntheticAccount.id,
+        purposeVersionId: 'pur_syntheticpurpose001',
+        decision: 'granted',
+        channel: 'web',
+        audit: { retentionPolicyRef: 'synthetic-retention-policy' },
+      },
+    ]);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/v1/consent-decisions',
+          headers: {
+            'x-glucora-dev-actor': syntheticAccount.id,
+            'idempotency-key': 'synthetic-consent-decision-2',
+          },
+          payload: {
+            purpose_version_id: 'pur_syntheticmissing0001',
+            decision: 'granted',
+          },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/v1/consent-decisions',
+          headers: {
+            'x-glucora-dev-actor': syntheticAccount.id,
+            'idempotency-key': 'synthetic-consent-decision-3',
+          },
+          payload: {
+            purpose_version_id: 'pur_syntheticpurpose001',
+            decision: 'granted',
+            extra: 'synthetic-health-content',
+          },
         })
       ).statusCode,
     ).toBe(400);

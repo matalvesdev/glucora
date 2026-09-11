@@ -46,11 +46,11 @@ test('privacy and support remain closed without an authenticated account', async
   await expect(
     page.getByRole('heading', {
       level: 2,
-      name: 'Histórico de decisões',
+      name: 'Suas escolhas',
     }),
   ).toBeVisible();
   await expect(
-    page.getByText('Entre na sua conta para consultar'),
+    page.getByText('Entre na sua conta para consultar e controlar'),
   ).toBeVisible();
   await expect(page.locator('input,textarea,[role="switch"]')).toHaveCount(0);
   expect(
@@ -66,6 +66,7 @@ test('authenticated user can submit minimized privacy and support requests', asy
   const payloads: unknown[] = [];
   let privacyListCalls = 0;
   let supportListCalls = 0;
+  let consentPurposeCalls = 0;
   await page.route('**/v1/me', (route) =>
     route.fulfill({
       status: 200,
@@ -105,6 +106,43 @@ test('authenticated user can submit minimized privacy and support requests', asy
       }),
     }),
   );
+  await page.route('**/v1/consent-purposes', (route) => {
+    consentPurposeCalls += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [
+          {
+            id: 'pur_syntheticpurpose001',
+            purpose_key: 'self_care_health_data',
+            version: 1,
+            title: 'Finalidade sintética',
+            notice_text: 'Texto sintético da finalidade aprovada.',
+            legal_basis_ref: 'LGPD art. 11, I',
+            retention_policy_ref: 'Política sintética',
+            current_decision: consentPurposeCalls === 1 ? 'granted' : 'revoked',
+          },
+        ],
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    });
+  });
+  await page.route('**/v1/consent-decisions', async (route) => {
+    payloads.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'cne_syntheticdecision001',
+        purpose_version_id: 'pur_syntheticpurpose001',
+        decision: 'revoked',
+        occurred_at: '2026-01-04T00:00:00.000Z',
+        recorded_at: '2026-01-04T00:00:01.000Z',
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    });
+  });
   await page.route('**/v1/privacy-requests', async (route) => {
     payloads.push(route.request().postDataJSON());
     await route.fulfill({
@@ -227,8 +265,10 @@ test('authenticated user can submit minimized privacy and support requests', asy
   await page.goto('/');
   await page.getByRole('button', { name: 'Privacidade e suporte' }).click();
   await expect(page.getByRole('status')).toContainText('Acesso verificado');
-  await expect(page.getByText('Finalidade sintética')).toBeVisible();
-  await expect(page.getByText('Autorizado')).toBeVisible();
+  await expect(page.getByText('Finalidade sintética').first()).toBeVisible();
+  await expect(page.getByText('Autorizado').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Revogar consentimento' }).click();
+  await expect(page.getByRole('button', { name: 'Autorizar' })).toBeVisible();
   await expect(page.getByText('Exportação de dados')).toBeVisible();
   await expect(page.getByText('Em análise')).toBeVisible();
   await page.getByRole('button', { name: 'Ver histórico' }).click();
@@ -256,6 +296,10 @@ test('authenticated user can submit minimized privacy and support requests', asy
       .getByText('Problema técnico', { exact: true }),
   ).toBeVisible();
   expect(payloads).toEqual([
+    {
+      purpose_version_id: 'pur_syntheticpurpose001',
+      decision: 'revoked',
+    },
     { kind: 'export' },
     { category: 'technical_issue' },
   ]);

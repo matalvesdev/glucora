@@ -38,7 +38,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(14);
+        ).toBe(15);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -97,6 +97,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0014_support_requests.sql'),
           join(directory, '0014_support_requests.sql'),
         );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0015_self_care_health_purpose.sql',
+          ),
+          join(directory, '0015_self_care_health_purpose.sql'),
+        );
         await writeFile(
           join(directory, '0015_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
@@ -127,6 +133,11 @@ describe('real PostgreSQL migrations and readiness', () => {
            VALUES ($1, $2, $3)`,
             ['usr_syntheticconsumer001', 'pt-BR', 'America/Sao_Paulo'],
           );
+          await client.query(
+            `INSERT INTO identity.user_accounts (id, locale, timezone)
+             VALUES ($1, $2, $3)`,
+            ['usr_syntheticconsumer003', 'pt-BR', 'America/Sao_Paulo'],
+          );
           await expect(
             ready.users.findById('usr_syntheticconsumer001'),
           ).resolves.toMatchObject({
@@ -141,6 +152,9 @@ describe('real PostgreSQL migrations and readiness', () => {
             checkReadiness: ready.checkReadiness,
             identity: createDevelopmentIdentityAdapter(),
             users: ready.users,
+            consents: ready.consents,
+            consentPurposes: ready.consentPurposes,
+            consentDecisions: ready.consentDecisions,
             privacyRequests: ready.privacyRequests,
             privacyRequestPolicy: {
               retentionPolicyRef: 'synthetic-retention-review-ref',
@@ -152,6 +166,44 @@ describe('real PostgreSQL migrations and readiness', () => {
             logger: createLogger('silent'),
           });
           try {
+            const purposes = await api.inject({
+              url: '/v1/consent-purposes',
+              headers: {
+                'x-glucora-dev-actor': 'usr_syntheticconsumer003',
+              },
+            });
+            expect(purposes.json()).toMatchObject({
+              items: [{ purpose_key: 'self_care_health_data' }],
+            });
+            const consent = await api.inject({
+              method: 'POST',
+              url: '/v1/consent-decisions',
+              headers: {
+                'x-glucora-dev-actor': 'usr_syntheticconsumer003',
+                'idempotency-key': ['synthetic', 'consent', 'retry'].join('-'),
+              },
+              payload: {
+                purpose_version_id: 'pur_selfcarehealth0001',
+                decision: 'granted',
+              },
+            });
+            expect(consent.statusCode).toBe(201);
+            const consentRetry = await api.inject({
+              method: 'POST',
+              url: '/v1/consent-decisions',
+              headers: {
+                'x-glucora-dev-actor': 'usr_syntheticconsumer003',
+                'idempotency-key': ['synthetic', 'consent', 'retry'].join('-'),
+              },
+              payload: {
+                purpose_version_id: 'pur_selfcarehealth0001',
+                decision: 'granted',
+              },
+            });
+            expect(consentRetry.statusCode).toBe(201);
+            expect(consentRetry.json()).toMatchObject({
+              id: consent.json<{ id: string }>().id,
+            });
             const created = await api.inject({
               method: 'POST',
               url: '/v1/privacy-requests',

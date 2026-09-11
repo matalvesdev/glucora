@@ -40,6 +40,21 @@ export interface ConsentPurposeVersion {
   readonly retiredAt: string | null;
 }
 
+export interface PublishedConsentPurpose extends ConsentPurposeVersion {
+  readonly purposeKey: string;
+  readonly version: number;
+  readonly title: string;
+  readonly noticeText: string;
+  readonly legalBasisRef: string;
+  readonly retentionPolicyRef: string;
+}
+
+export interface ConsentPurposeRepository {
+  listPublished(
+    evaluatedAt: string,
+  ): Promise<readonly PublishedConsentPurpose[]>;
+}
+
 export interface ConsentHistoryItem {
   readonly eventId: string;
   readonly purposeVersionId: string;
@@ -79,6 +94,19 @@ export interface ConsentRepository {
       };
     },
   ): Promise<readonly ConsentHistoryItem[]>;
+}
+
+export interface RecordConsentDecisionWithAudit extends RecordConsentDecision {
+  readonly audit: {
+    readonly id: string;
+    readonly requestId: string;
+    readonly retentionPolicyRef: string;
+    readonly occurredAt: string;
+  };
+}
+
+export interface ConsentDecisionRecorder {
+  recordWithAudit(input: RecordConsentDecisionWithAudit): Promise<ConsentEvent>;
 }
 
 export type AuthorizationDenialReason =

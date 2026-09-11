@@ -19,6 +19,8 @@ try {
     identity,
     users: database.users,
     consents: database.consents,
+    consentPurposes: database.consentPurposes,
+    consentDecisions: database.consentDecisions,
     privacyRequests: database.privacyRequests,
     ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
       ? {

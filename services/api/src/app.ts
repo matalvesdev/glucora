@@ -3,8 +3,11 @@ import Fastify, { LogController } from 'fastify';
 import swagger from '@fastify/swagger';
 import helmet from '@fastify/helmet';
 import {
+  ConsentDecisionResponseSchema,
   ConsentHistoryQuerySchema,
   ConsentHistoryResponseSchema,
+  ConsentPurposeListSchema,
+  RecordConsentDecisionBodySchema,
   CreatePrivacyRequestBodySchema,
   CreateSupportRequestBodySchema,
   ErrorSchema,
@@ -22,6 +25,8 @@ import {
 } from '@glucora/contracts';
 import type {
   ConsentHistoryItem,
+  ConsentDecisionRecorder,
+  ConsentPurposeRepository,
   ConsentRepository,
   IdentityPort,
   PrivacyRequestRepository,
@@ -41,6 +46,8 @@ export interface AppDependencies {
   identity?: IdentityPort<import('fastify').FastifyRequest>;
   users?: UserAccountRepository;
   consents?: ConsentRepository;
+  consentPurposes?: ConsentPurposeRepository;
+  consentDecisions?: ConsentDecisionRecorder;
   privacyRequests?: PrivacyRequestRepository;
   privacyRequestPolicy?: { readonly retentionPolicyRef: string };
   supportRequests?: SupportRequestRepository;
@@ -617,6 +624,151 @@ export function buildApp(deps: AppDependencies) {
           if (
             error instanceof Error &&
             error.message === 'Idempotency key reused'
+          )
+            return reply.code(409).send({
+              code: 'IDEMPOTENCY_CONFLICT',
+              message: 'A chave de idempotência já foi utilizada.',
+              request_id: request.id,
+            });
+          throw error;
+        }
+      },
+    );
+    routes.get(
+      '/v1/consent-purposes',
+      {
+        schema: {
+          operationId: 'listConsentPurposes',
+          response: {
+            200: ConsentPurposeListSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.consentPurposes || !deps.consents)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Consentimentos temporariamente indisponíveis.',
+            request_id: request.id,
+          });
+        const purposes = await deps.consentPurposes.listPublished(
+          new Date().toISOString(),
+        );
+        const items = await Promise.all(
+          purposes.map(async (purpose) => ({
+            id: purpose.id,
+            purpose_key: purpose.purposeKey,
+            version: purpose.version,
+            title: purpose.title,
+            notice_text: purpose.noticeText,
+            legal_basis_ref: purpose.legalBasisRef,
+            retention_policy_ref: purpose.retentionPolicyRef,
+            current_decision:
+              (await deps.consents?.current(actor.id, purpose.id))?.decision ??
+              null,
+          })),
+        );
+        return { items, request_id: request.id };
+      },
+    );
+    routes.post(
+      '/v1/consent-decisions',
+      {
+        schema: {
+          operationId: 'recordConsentDecision',
+          headers: IdempotencyHeadersSchema,
+          body: RecordConsentDecisionBodySchema,
+          response: {
+            201: ConsentDecisionResponseSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            409: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.consentPurposes || !deps.consentDecisions)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Consentimentos temporariamente indisponíveis.',
+            request_id: request.id,
+          });
+        const body = request.body as {
+          purpose_version_id: string;
+          decision: 'granted' | 'denied' | 'revoked';
+        };
+        const purpose = (
+          await deps.consentPurposes.listPublished(new Date().toISOString())
+        ).find((item) => item.id === body.purpose_version_id);
+        if (!purpose)
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        const headers = request.headers as { 'idempotency-key': string };
+        const occurredAt = new Date().toISOString();
+        try {
+          const event = await deps.consentDecisions.recordWithAudit({
+            id: `cne_${randomUUID().replaceAll('-', '')}`,
+            userId: actor.id,
+            purposeVersionId: purpose.id,
+            decision: body.decision,
+            channel: 'web',
+            idempotencyKey: headers['idempotency-key'],
+            occurredAt,
+            audit: {
+              id: `aud_${randomUUID().replaceAll('-', '')}`,
+              requestId: request.id,
+              retentionPolicyRef: purpose.retentionPolicyRef,
+              occurredAt,
+            },
+          });
+          return reply.code(201).send({
+            id: event.id,
+            purpose_version_id: event.purposeVersionId,
+            decision: event.decision,
+            occurred_at: event.occurredAt,
+            recorded_at: event.recordedAt,
+            request_id: request.id,
+          });
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message ===
+              'Idempotency key reused with different consent data'
           )
             return reply.code(409).send({
               code: 'IDEMPOTENCY_CONFLICT',
