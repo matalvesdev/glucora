@@ -4,4 +4,6 @@ Accepted ADR-001 through ADR-012 are preserved as sourced snapshots under ../sou
 See ../source-of-truth/12-2.md for the decision register.
 Cloud/region, identity, queues, object storage, observability provider, KMS, AI provider and other listed strategic decisions remain OPEN where an accepted ADR intentionally preserves that choice for a later decision.
 Before a new material change, create a PROPOSED ADR with context, alternatives, drivers, risks, owner and evidence; do not treat it as accepted.
+
+ADR-042 propõe as finalidades, bases legais e retenções iniciais para o Brasil; não está aceita nem ativa capacidades de dados de saúde.
 No new strategic decision is introduced by Initiative A.
