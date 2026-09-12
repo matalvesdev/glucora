@@ -27,7 +27,7 @@ const target = (
     targetClass,
     outcome,
     reasonCode:
-      outcome === 'deleted' ? 'deletion_confirmed' : 'legal_retention',
+      outcome === 'deleted' ? 'deletion_confirmed' : 'legal_hold_documented',
     evidenceRef: `evidence-${targetId}`,
     recordedAt: '2026-01-02T01:00:00.000Z',
   }),
@@ -56,6 +56,26 @@ describe('deletion fulfillment boundary', () => {
     expect(targets[0]!.fulfill).toHaveBeenCalledWith({
       privacyRequestId: request.id,
       userId: request.userId,
+    });
+  });
+
+  it('keeps the request incomplete for a retained target without a documented legal hold', async () => {
+    const retained: DeletionTargetPort = {
+      ...target('backup_lifecycle', 'backup', 'retained'),
+      fulfill: vi.fn().mockResolvedValue({
+        targetId: 'backup_lifecycle',
+        targetClass: 'backup',
+        outcome: 'retained',
+        reasonCode: 'retention_pending',
+        evidenceRef: 'evidence-backup',
+        recordedAt: '2026-01-02T01:00:00.000Z',
+      }),
+    };
+    await expect(
+      runDeletionFulfillment(request, [retained]),
+    ).resolves.toMatchObject({
+      complete: false,
+      receipts: [{ outcome: 'retained', reasonCode: 'retention_pending' }],
     });
   });
 

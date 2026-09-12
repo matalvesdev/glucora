@@ -89,7 +89,11 @@ export async function runDeletionFulfillment(
   return {
     privacyRequestId: request.id,
     complete: receipts.every(
-      ({ outcome }) => outcome === 'deleted' || outcome === 'retained',
+      ({ outcome, reasonCode, evidenceRef }) =>
+        outcome === 'deleted' ||
+        (outcome === 'retained' &&
+          reasonCode === 'legal_hold_documented' &&
+          Boolean(evidenceRef)),
     ),
     receipts,
   };
