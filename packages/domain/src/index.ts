@@ -212,4 +212,5 @@ export * from './ai-evaluation';
 export * from './feedback';
 export * from './support';
 export * from './deletion-fulfillment';
+export * from './retention-governance';
 export * from './data-export';
