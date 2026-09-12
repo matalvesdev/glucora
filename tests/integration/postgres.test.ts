@@ -38,7 +38,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(20);
+        ).toBe(21);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -130,6 +130,12 @@ describe('real PostgreSQL migrations and readiness', () => {
             'infrastructure/migrations/0020_retention_hold_evidence_ref_regex.sql',
           ),
           join(directory, '0020_retention_hold_evidence_ref_regex.sql'),
+        );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0021_retention_hold_lifecycle.sql',
+          ),
+          join(directory, '0021_retention_hold_lifecycle.sql'),
         );
         await writeFile(
           join(directory, '0015_failure.sql'),
@@ -382,11 +388,25 @@ describe('real PostgreSQL migrations and readiness', () => {
               responsibleRef: '00001',
               evidenceRef: 'evidence-synthetic-0001',
               occurredAt: '2026-01-05T00:00:00.000Z',
+              reviewAt: '2026-02-05T00:00:00.000Z',
+              expiresAt: '2026-03-05T00:00:00.000Z',
             }),
           ).resolves.toMatchObject({
             userId: deletionInReview.userId,
             eventType: 'applied',
           });
+          await expect(
+            ready.retentionHolds.listForHold(
+              deletionInReview.userId,
+              'hold-synthetic-0001',
+            ),
+          ).resolves.toEqual([
+            expect.objectContaining({
+              id: 'rhe_syntheticholdapplied01',
+              reviewAt: '2026-02-05T00:00:00.000Z',
+              expiresAt: '2026-03-05T00:00:00.000Z',
+            }),
+          ]);
           expect(
             (
               await client.query(

@@ -17,6 +17,8 @@ const event = (
   responsibleRef: '00001',
   evidenceRef: 'evidence-synthetic-0001',
   occurredAt,
+  reviewAt: '2026-02-01T00:00:00.000Z',
+  expiresAt: '2026-03-01T00:00:00.000Z',
 });
 
 describe('retention hold ledger', () => {
@@ -31,6 +33,7 @@ describe('retention hold ledger', () => {
           ),
         ],
         'hold-synthetic-0001',
+        '2026-01-15T00:00:00.000Z',
       ),
     ).toBe(true);
     expect(
@@ -48,6 +51,23 @@ describe('retention hold ledger', () => {
           ),
         ],
         'hold-synthetic-0001',
+        '2026-01-15T00:00:00.000Z',
+      ),
+    ).toBe(false);
+  });
+
+  it('fails closed after the documented expiry', () => {
+    expect(
+      isRetentionHoldActive(
+        [
+          event(
+            'rhe_syntheticapplied001',
+            'applied',
+            '2026-01-01T00:00:00.000Z',
+          ),
+        ],
+        'hold-synthetic-0001',
+        '2026-03-01T00:00:00.000Z',
       ),
     ).toBe(false);
   });
