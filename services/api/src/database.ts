@@ -12,6 +12,7 @@ import { createPostgresConsultationReportRepository } from './modules/consultati
 import { createPostgresPrivacyRequestRepository } from './modules/privacy/privacy-request-repository';
 import { createPostgresCanonicalHealthDeletionTarget } from './modules/privacy/canonical-health-deletion-target';
 import { createPostgresDeletionTargetReceiptRepository } from './modules/privacy/deletion-target-receipt-repository';
+import { createPostgresRetentionHoldRepository } from './modules/privacy/retention-hold-repository';
 import { createPostgresShareGrantRepository } from './modules/sharing/share-grant-repository';
 import { createPostgresOutputContestationRepository } from './modules/feedback/output-contestation-repository';
 import { createPostgresSupportRequestRepository } from './modules/support/support-request-repository';
@@ -40,6 +41,7 @@ export function createDatabase(connectionString: string) {
     createPostgresCanonicalHealthDeletionTarget(pool);
   const deletionTargetReceipts =
     createPostgresDeletionTargetReceiptRepository(pool);
+  const retentionHolds = createPostgresRetentionHoldRepository(pool);
   const shareGrants = createPostgresShareGrantRepository(pool);
   const outputContestations = createPostgresOutputContestationRepository(pool);
   const supportRequests = createPostgresSupportRequestRepository(pool);
@@ -62,6 +64,7 @@ export function createDatabase(connectionString: string) {
     privacyRequests,
     canonicalHealthDeletionTarget,
     deletionTargetReceipts,
+    retentionHolds,
     shareGrants,
     outputContestations,
     supportRequests,
