@@ -258,6 +258,106 @@ describe('real PostgreSQL migrations and readiness', () => {
           } finally {
             await api.close();
           }
+          const deletionInput = {
+            request: {
+              id: 'dsr_syntheticdeletion001',
+              userId: 'usr_syntheticconsumer003',
+              kind: 'deletion' as const,
+              scope: 'all_user_data' as const,
+              status: 'requested' as const,
+              version: 1,
+              requestedAt: '2026-01-04T00:00:00.000Z',
+              updatedAt: '2026-01-04T00:00:00.000Z',
+            },
+            event: {
+              id: 'dse_syntheticdeletion001',
+              requestId: 'dsr_syntheticdeletion001',
+              userId: 'usr_syntheticconsumer003',
+              fromStatus: null,
+              toStatus: 'requested' as const,
+              reasonCode: 'user_requested',
+              occurredAt: '2026-01-04T00:00:00.000Z',
+            },
+            idempotencyKey: ['test', 'canonical', 'deletion'].join('-'),
+            requestHash: 'f'.repeat(64),
+            audit: {
+              id: 'aud_syntheticdeletion001',
+              requestId: 'c084687f-bc8e-470e-bf62-fdb4db992c76',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-04T00:00:00.000Z',
+            },
+          };
+          const deletionRequest =
+            await ready.privacyRequests.create(deletionInput);
+          const deletionInReview = await ready.privacyRequests.transition({
+            requestId: deletionRequest.id,
+            userId: deletionRequest.userId,
+            expectedVersion: deletionRequest.version,
+            event: {
+              id: 'dse_syntheticdeletion002',
+              requestId: deletionRequest.id,
+              userId: deletionRequest.userId,
+              fromStatus: 'requested',
+              toStatus: 'in_review',
+              reasonCode: 'identity_confirmed',
+              occurredAt: '2026-01-05T00:00:00.000Z',
+            },
+            audit: {
+              id: 'aud_syntheticdeletion002',
+              requestId: '31f006a7-6117-4a8a-84c3-b59c55e8a16f',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-05T00:00:00.000Z',
+            },
+          });
+          await client.query(
+            `INSERT INTO health.provenance_records
+              (id, user_id, source_type, source_id, recorded_at, created_at)
+             VALUES ($1, $2, 'manual', $3, $4, $4)`,
+            [
+              'prv_syntheticdeletion001',
+              deletionRequest.userId,
+              'src_syntheticdeletion001',
+              '2026-01-05T00:00:00.000Z',
+            ],
+          );
+          await expect(
+            ready.canonicalHealthDeletionTarget.fulfill({
+              privacyRequestId: deletionInReview.id,
+              userId: deletionInReview.userId,
+            }),
+          ).resolves.toMatchObject({
+            targetId: 'canonical_health_records',
+            targetClass: 'canonical',
+            outcome: 'deleted',
+            reasonCode: 'deletion_confirmed',
+            evidenceRef: `privacy-request:${deletionInReview.id}`,
+          });
+          expect(
+            (
+              await client.query(
+                'SELECT count(*)::int AS count FROM health.provenance_records WHERE user_id=$1',
+                [deletionRequest.userId],
+              )
+            ).rows[0]?.count,
+          ).toBe(0);
+          await expect(
+            ready.consents.listHistory(deletionRequest.userId, { limit: 10 }),
+          ).resolves.toEqual([]);
+          await expect(
+            ready.privacyRequests.findById(
+              deletionRequest.id,
+              deletionRequest.userId,
+            ),
+          ).resolves.toMatchObject({ status: 'in_review', version: 2 });
+          await expect(
+            ready.audit.historyForResource(
+              'privacy_request',
+              deletionRequest.id,
+            ),
+          ).resolves.toMatchObject([
+            { action: 'created', outcome: 'succeeded' },
+            { action: 'transitioned', outcome: 'succeeded' },
+          ]);
           const contextTime = '2026-01-01T10:00:00.000Z';
           await client.query(
             `INSERT INTO health.provenance_records
