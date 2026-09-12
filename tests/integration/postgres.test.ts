@@ -38,7 +38,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(16);
+        ).toBe(17);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -108,6 +108,10 @@ describe('real PostgreSQL migrations and readiness', () => {
             'infrastructure/migrations/0016_canonical_health_deletion.sql',
           ),
           join(directory, '0016_canonical_health_deletion.sql'),
+        );
+        await copyFile(
+          resolve('infrastructure/migrations/0017_retention_governance.sql'),
+          join(directory, '0017_retention_governance.sql'),
         );
         await writeFile(
           join(directory, '0015_failure.sql'),
