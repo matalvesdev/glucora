@@ -18,6 +18,7 @@ export function createPostgresCanonicalHealthDeletionTarget(
         outcome: 'deleted',
         reasonCode: 'deletion_confirmed',
         evidenceRef: `privacy-request:${input.privacyRequestId}`,
+        legalHoldRef: null,
         recordedAt: new Date().toISOString(),
       };
     },
