@@ -100,13 +100,9 @@ export async function runDeletionFulfillment(
   }
   return {
     privacyRequestId: request.id,
-    complete: receipts.every(
-      ({ outcome, reasonCode, evidenceRef }) =>
-        outcome === 'deleted' ||
-        (outcome === 'retained' &&
-          reasonCode === 'legal_hold_documented' &&
-          Boolean(evidenceRef)),
-    ),
+    // A retained target requires lookup of its separate legal-hold ledger.
+    // Until an executor performs that lookup, fail closed and keep the request open.
+    complete: receipts.every(({ outcome }) => outcome === 'deleted'),
     receipts,
   };
 }
