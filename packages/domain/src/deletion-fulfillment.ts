@@ -110,3 +110,21 @@ export async function runDeletionFulfillment(
     receipts,
   };
 }
+
+export async function runAndRecordDeletionFulfillment(
+  request: PrivacyRequest,
+  targets: readonly DeletionTargetPort[],
+  receipts: DeletionTargetReceiptRepository,
+  newReceiptId: () => string,
+): Promise<DeletionFulfillmentReport> {
+  const report = await runDeletionFulfillment(request, targets);
+  for (const receipt of report.receipts) {
+    await receipts.record({
+      id: newReceiptId(),
+      privacyRequestId: request.id,
+      userId: request.userId,
+      ...receipt,
+    });
+  }
+  return report;
+}
