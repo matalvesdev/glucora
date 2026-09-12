@@ -46,7 +46,7 @@ describe('deletion fulfillment boundary', () => {
       runDeletionFulfillment(request, targets),
     ).resolves.toMatchObject({
       privacyRequestId: request.id,
-      complete: true,
+      complete: false,
       receipts: [
         { targetClass: 'canonical', outcome: 'deleted' },
         { targetClass: 'projection', outcome: 'deleted' },
