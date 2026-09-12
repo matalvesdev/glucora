@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   runDeletionFulfillment,
+  runAndRecordDeletionFulfillment,
   type DeletionTargetPort,
   type PrivacyRequest,
 } from '../packages/domain/src/index';
@@ -91,6 +92,25 @@ describe('deletion fulfillment boundary', () => {
       receipts: [{ outcome: 'failed', reasonCode: 'adapter_failure' }],
     });
     expect(JSON.stringify(report)).not.toContain('secret vendor response');
+  });
+
+  it('persists every safe receipt before returning the report', async () => {
+    const records: unknown[] = [];
+    const report = await runAndRecordDeletionFulfillment(
+      request,
+      [target('canonical_records', 'canonical')],
+      { record: async (value) => (records.push(value), value) },
+      () => 'drc_syntheticrecorded001',
+    );
+    expect(report.complete).toBe(true);
+    expect(records).toEqual([
+      expect.objectContaining({
+        id: 'drc_syntheticrecorded001',
+        privacyRequestId: request.id,
+        userId: request.userId,
+        targetId: 'canonical_records',
+      }),
+    ]);
   });
 
   it('rejects an ineligible request or ambiguous target plan', async () => {
