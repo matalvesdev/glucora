@@ -38,7 +38,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(17);
+        ).toBe(18);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -112,6 +112,12 @@ describe('real PostgreSQL migrations and readiness', () => {
         await copyFile(
           resolve('infrastructure/migrations/0017_retention_governance.sql'),
           join(directory, '0017_retention_governance.sql'),
+        );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0018_deletion_receipt_ownership.sql',
+          ),
+          join(directory, '0018_deletion_receipt_ownership.sql'),
         );
         await writeFile(
           join(directory, '0015_failure.sql'),
@@ -584,6 +590,20 @@ describe('real PostgreSQL migrations and readiness', () => {
           };
           const privacyRequest =
             await ready.privacyRequests.create(privacyInput);
+          await expect(
+            client.query(
+              `INSERT INTO privacy.deletion_target_receipts
+                (id,request_id,user_id,target_id,target_class,outcome,reason_code,evidence_ref,recorded_at)
+               VALUES ($1,$2,$3,'canonical_health_records','canonical','deleted','deletion_confirmed',$4,$5)`,
+              [
+                'drc_syntheticmismatch001',
+                privacyRequest.id,
+                'usr_syntheticconsumer003',
+                'privacy-request:synthetic',
+                '2026-01-05T00:00:00.000Z',
+              ],
+            ),
+          ).rejects.toThrow('does not own request');
           await expect(
             ready.privacyRequests.create(privacyInput),
           ).resolves.toEqual(privacyRequest);
