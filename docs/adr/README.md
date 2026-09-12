@@ -7,4 +7,6 @@ Before a new material change, create a PROPOSED ADR with context, alternatives, 
 
 ADR-042 define as finalidades, bases legais e retenções iniciais para o Brasil. Foi aceito por Mateus Alves Bassane em 2026-09-11, com evidência `00001`.
 ADR-043 define a classificação e a execução canônica de exclusão necessária para cumprir a ADR-042. Foi aceita por Mateus Alves Bassane em 2026-09-11, com evidência `00001`.
+
+ADR-044 está proposta para definir o ciclo operacional, bloqueios jurídicos e critérios de conclusão da retenção e exclusão. Ela não está aceita e não aprova fornecedor, operador ou mecanismo de produção.
 No new strategic decision is introduced by Initiative A.
