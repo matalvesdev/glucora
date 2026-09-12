@@ -38,7 +38,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(18);
+        ).toBe(19);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -118,6 +118,12 @@ describe('real PostgreSQL migrations and readiness', () => {
             'infrastructure/migrations/0018_deletion_receipt_ownership.sql',
           ),
           join(directory, '0018_deletion_receipt_ownership.sql'),
+        );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0019_receipt_evidence_ref_regex.sql',
+          ),
+          join(directory, '0019_receipt_evidence_ref_regex.sql'),
         );
         await writeFile(
           join(directory, '0015_failure.sql'),
@@ -341,6 +347,24 @@ describe('real PostgreSQL migrations and readiness', () => {
             outcome: 'deleted',
             reasonCode: 'deletion_confirmed',
             evidenceRef: `privacy-request:${deletionInReview.id}`,
+          });
+          await expect(
+            ready.deletionTargetReceipts.record({
+              id: 'drc_syntheticcanonical001',
+              privacyRequestId: deletionInReview.id,
+              userId: deletionInReview.userId,
+              targetId: 'canonical_health_records',
+              targetClass: 'canonical',
+              outcome: 'deleted',
+              reasonCode: 'deletion_confirmed',
+              evidenceRef: `privacy-request:${deletionInReview.id}`,
+              recordedAt: '2026-01-05T00:00:00.000Z',
+            }),
+          ).resolves.toMatchObject({
+            id: 'drc_syntheticcanonical001',
+            privacyRequestId: deletionInReview.id,
+            userId: deletionInReview.userId,
+            outcome: 'deleted',
           });
           expect(
             (

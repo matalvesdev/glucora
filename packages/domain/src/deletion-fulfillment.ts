@@ -14,6 +14,18 @@ export interface DeletionTargetReceipt {
   readonly recordedAt: string;
 }
 
+export interface PersistedDeletionTargetReceipt extends DeletionTargetReceipt {
+  readonly id: string;
+  readonly privacyRequestId: string;
+  readonly userId: string;
+}
+
+export interface DeletionTargetReceiptRepository {
+  record(
+    input: PersistedDeletionTargetReceipt,
+  ): Promise<PersistedDeletionTargetReceipt>;
+}
+
 export interface DeletionTargetPort {
   readonly targetId: string;
   readonly targetClass: DeletionTargetClass;
