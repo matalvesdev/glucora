@@ -75,7 +75,7 @@ H5 em fundação: solicitações de suporte do consumidor usam categoria control
 
 G8 em implementação parcial: o orquestrador provider-neutral executa plano explícito de targets canonical, projection, vendor e backup, exige recibos com evidência e converte erros externos em códigos seguros. Com a ADR-043 aceita, o adapter PostgreSQL canônico remove em transação os registros de saúde e eventos de consentimento do titular somente para pedido de exclusão em revisão; o pedido e sua auditoria são conservados. Backup, fornecedor, subprocessadores, política operacional de retenção e transição final continuam pendentes.
 
-ADR-044 foi proposta para o próximo gate de G8: ciclo operacional de retenção/exclusão, bloqueio jurídico documentado, recibos mínimos e condição de conclusão. Até seu aceite e implementação validada, nenhum pedido é concluído automaticamente e a captura pública de saúde continua bloqueada.
+ADR-044 foi aceita para o próximo gate de G8: ciclo operacional de retenção/exclusão, bloqueio jurídico documentado, recibos mínimos e condição de conclusão. Até sua implementação validada, nenhum pedido é concluído automaticamente e a captura pública de saúde continua bloqueada.
 
 E5/G1 em fundação: gerador JSON estruturado aceita apenas pedido de exportação em revisão, agrega seções explícitas, preserva versões/provenance, bloqueia dados de outro titular e gera checksum determinístico. ADR-033 permanece PROPOSED; storage, criptografia, expiração, entrega, reautenticação e adapters reais continuam pendentes.
 

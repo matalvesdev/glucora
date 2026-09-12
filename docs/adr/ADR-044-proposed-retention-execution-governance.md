@@ -1,6 +1,8 @@
 # ADR-044: governança da execução de retenção e exclusão
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
+
+Aceita por Mateus Alves Bassane em 2026-09-12, com evidência `00001`.
 
 ## Contexto
 
