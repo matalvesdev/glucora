@@ -55,6 +55,21 @@ export interface DeletionFulfillmentReport {
 }
 
 const reasonCodePattern = /^[a-z][a-z0-9_]{2,63}$/;
+const requiredDeletionTargetClasses: readonly DeletionTargetClass[] = [
+  'canonical',
+  'projection',
+  'vendor',
+  'backup',
+];
+
+function hasRequiredDeletionTargetClasses(
+  targets: readonly Pick<DeletionTargetPort, 'targetClass'>[],
+): boolean {
+  const classes = new Set(targets.map(({ targetClass }) => targetClass));
+  return requiredDeletionTargetClasses.every((targetClass) =>
+    classes.has(targetClass),
+  );
+}
 
 function validReceipt(
   port: DeletionTargetPort,
@@ -168,7 +183,8 @@ export async function reconcilePersistedDeletionFulfillment(
     throw new Error('Deletion request is not eligible for fulfillment');
   if (
     targets.length === 0 ||
-    new Set(targets.map(({ targetId }) => targetId)).size !== targets.length
+    new Set(targets.map(({ targetId }) => targetId)).size !== targets.length ||
+    !hasRequiredDeletionTargetClasses(targets)
   )
     throw new Error('Invalid deletion target plan');
   const receipts = targets.map((target) => {

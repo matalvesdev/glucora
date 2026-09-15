@@ -158,6 +158,8 @@ describe('deletion fulfillment boundary', () => {
         request,
         [
           { targetId: 'canonical_records', targetClass: 'canonical' },
+          { targetId: 'timeline_projection', targetClass: 'projection' },
+          { targetId: 'synthetic_vendor', targetClass: 'vendor' },
           { targetId: 'backup_lifecycle', targetClass: 'backup' },
         ],
         [receipt],
@@ -192,7 +194,12 @@ describe('deletion fulfillment boundary', () => {
     await expect(
       finalizeVerifiedDeletion({
         request,
-        targets: [{ targetId: 'canonical_records', targetClass: 'canonical' }],
+        targets: [
+          { targetId: 'canonical_records', targetClass: 'canonical' },
+          { targetId: 'timeline_projection', targetClass: 'projection' },
+          { targetId: 'synthetic_vendor', targetClass: 'vendor' },
+          { targetId: 'backup_lifecycle', targetClass: 'backup' },
+        ],
         receipts: {
           record: async (value) => value,
           listForRequest: async () => [],
@@ -216,6 +223,60 @@ describe('deletion fulfillment boundary', () => {
       }),
     ).rejects.toThrow('not eligible');
     expect(transition).not.toHaveBeenCalled();
+  });
+
+  it('finalizes only after persisted evidence covers every required target class', async () => {
+    const transition = vi
+      .fn()
+      .mockResolvedValue({ ...request, status: 'fulfilled' });
+    const targets = [
+      { targetId: 'canonical_records', targetClass: 'canonical' as const },
+      { targetId: 'timeline_projection', targetClass: 'projection' as const },
+      { targetId: 'synthetic_vendor', targetClass: 'vendor' as const },
+      { targetId: 'backup_lifecycle', targetClass: 'backup' as const },
+    ];
+    await expect(
+      finalizeVerifiedDeletion({
+        request,
+        targets,
+        receipts: {
+          record: async (value) => value,
+          listForRequest: async () =>
+            targets.map((target, index) => ({
+              id: `drc_syntheticcomplete00${index}`,
+              privacyRequestId: request.id,
+              userId: request.userId,
+              ...target,
+              outcome: 'deleted' as const,
+              reasonCode: 'deletion_confirmed',
+              evidenceRef: `evidence-${target.targetId}`,
+              legalHoldRef: null,
+              recordedAt: '2026-01-02T01:00:00.000Z',
+            })),
+        },
+        holds: {
+          record: async (value: never) => value,
+          listForHold: async () => [],
+        },
+        requests: {
+          transition,
+          create: vi.fn(),
+          findById: vi.fn(),
+          history: vi.fn(),
+          listOwn: vi.fn(),
+        },
+        eventId: 'dse_synthetictransition01',
+        auditId: 'aud_synthetictransition01',
+        auditRequestId: 'req_synthetictransition01',
+        retentionPolicyRef: 'retention-synthetic-v1',
+        occurredAt: '2026-01-02T01:00:00.000Z',
+      }),
+    ).resolves.toMatchObject({ status: 'fulfilled' });
+    expect(transition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audit: expect.objectContaining({ actorType: 'system', actorId: null }),
+      }),
+    );
   });
 
   it('persists every safe receipt before returning the report', async () => {
@@ -249,6 +310,15 @@ describe('deletion fulfillment boundary', () => {
     const duplicate = target('same_target', 'vendor');
     await expect(
       runDeletionFulfillment(request, [duplicate, duplicate]),
+    ).rejects.toThrow('Invalid deletion target plan');
+    await expect(
+      reconcilePersistedDeletionFulfillment(
+        request,
+        [{ targetId: 'canonical_records', targetClass: 'canonical' }],
+        [],
+        { record: async (value: never) => value, listForHold: async () => [] },
+        '2026-01-15T00:00:00.000Z',
+      ),
     ).rejects.toThrow('Invalid deletion target plan');
   });
 });
