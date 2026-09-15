@@ -83,6 +83,8 @@ ADR-045 foi aceita para completar a evidência temporal mínima do bloqueio jur�
 
 ADR-046 foi aceita para vincular recibo retido ao ledger do mesmo titular. O orquestrador interno só aceita um target retido quando há hold documentado, ativo e não vencido; falhas mantêm a solicitação incompleta. A transição de workflow e a execução operacional seguem bloqueadas.
 
+G8 em fundação: recibos persistidos podem ser relidos somente pelo pedido e titular correspondentes, em ordem determinística, para que uma futura transição interna valide a evidência já conservada. Esta leitura não altera estado nem habilita executor, transição automática ou operação pública.
+
 E5/G1 em fundação: gerador JSON estruturado aceita apenas pedido de exportação em revisão, agrega seções explícitas, preserva versões/provenance, bloqueia dados de outro titular e gera checksum determinístico. ADR-033 permanece PROPOSED; storage, criptografia, expiração, entrega, reautenticação e adapters reais continuam pendentes.
 
 G1/G3/G7 em API condicionada: POST/GET de solicitações de privacidade exigem autenticação, conta ativa, ownership, idempotência e validação runtime; o servidor deriva titular e estado. Sem referência explícita da política de retenção, novas criações são bloqueadas, mas status existente permanece legível. ADR-034 permanece PROPOSED; identidade/política de produção, UI, verificação e fulfillment continuam pendentes.

@@ -57,5 +57,14 @@ export function createPostgresDeletionTargetReceiptRepository(
       if (!row) throw new Error('Deletion receipt was not recorded');
       return map(row);
     },
+    async listForRequest(privacyRequestId, userId) {
+      const result = await pool.query<Row>(
+        `SELECT ${columns} FROM privacy.deletion_target_receipts
+          WHERE request_id=$1 AND user_id=$2
+          ORDER BY recorded_at ASC,id ASC`,
+        [privacyRequestId, userId],
+      );
+      return result.rows.map(map);
+    },
   };
 }

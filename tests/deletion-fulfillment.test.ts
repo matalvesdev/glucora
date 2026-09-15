@@ -138,7 +138,10 @@ describe('deletion fulfillment boundary', () => {
     const report = await runAndRecordDeletionFulfillment(
       request,
       [target('canonical_records', 'canonical')],
-      { record: async (value) => (records.push(value), value) },
+      {
+        record: async (value) => (records.push(value), value),
+        listForRequest: async () => [],
+      },
       () => 'drc_syntheticrecorded001',
     );
     expect(report.complete).toBe(true);

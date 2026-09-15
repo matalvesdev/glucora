@@ -29,6 +29,10 @@ export interface DeletionTargetReceiptRepository {
   record(
     input: PersistedDeletionTargetReceipt,
   ): Promise<PersistedDeletionTargetReceipt>;
+  listForRequest(
+    privacyRequestId: string,
+    userId: string,
+  ): Promise<readonly PersistedDeletionTargetReceipt[]>;
 }
 
 export interface DeletionTargetPort {

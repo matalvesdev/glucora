@@ -386,6 +386,23 @@ describe('real PostgreSQL migrations and readiness', () => {
             outcome: 'deleted',
           });
           await expect(
+            ready.deletionTargetReceipts.listForRequest(
+              deletionInReview.id,
+              deletionInReview.userId,
+            ),
+          ).resolves.toEqual([
+            expect.objectContaining({
+              id: 'drc_syntheticcanonical001',
+              legalHoldRef: null,
+            }),
+          ]);
+          await expect(
+            ready.deletionTargetReceipts.listForRequest(
+              deletionInReview.id,
+              'usr_syntheticconsumer002',
+            ),
+          ).resolves.toEqual([]);
+          await expect(
             ready.retentionHolds.record({
               id: 'rhe_syntheticholdapplied01',
               userId: deletionInReview.userId,
