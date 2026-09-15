@@ -442,12 +442,38 @@ describe('real PostgreSQL migrations and readiness', () => {
           await expect(
             ready.consents.listHistory(deletionRequest.userId, { limit: 10 }),
           ).resolves.toEqual([]);
+          const deletionFulfilled = await ready.privacyRequests.transition({
+            requestId: deletionInReview.id,
+            userId: deletionInReview.userId,
+            expectedVersion: deletionInReview.version,
+            event: {
+              id: 'dse_syntheticdeletion003',
+              requestId: deletionInReview.id,
+              userId: deletionInReview.userId,
+              fromStatus: 'in_review',
+              toStatus: 'fulfilled',
+              reasonCode: 'deletion_fulfillment_verified',
+              occurredAt: '2026-01-05T01:00:00.000Z',
+            },
+            audit: {
+              id: 'aud_syntheticdeletion003',
+              requestId: 'b7e7d2b1-67be-4ae7-b0b7-8d4ad5d47a45',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+              occurredAt: '2026-01-05T01:00:00.000Z',
+              actorType: 'system',
+              actorId: null,
+            },
+          });
+          expect(deletionFulfilled).toMatchObject({
+            status: 'fulfilled',
+            version: 3,
+          });
           await expect(
             ready.privacyRequests.findById(
               deletionRequest.id,
               deletionRequest.userId,
             ),
-          ).resolves.toMatchObject({ status: 'in_review', version: 2 });
+          ).resolves.toMatchObject({ status: 'fulfilled', version: 3 });
           await expect(
             ready.audit.historyForResource(
               'privacy_request',
@@ -456,6 +482,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           ).resolves.toMatchObject([
             { action: 'created', outcome: 'succeeded' },
             { action: 'transitioned', outcome: 'succeeded' },
+            {
+              action: 'transitioned',
+              outcome: 'succeeded',
+              actorType: 'system',
+              actorId: null,
+            },
           ]);
           const contextTime = '2026-01-01T10:00:00.000Z';
           await client.query(
