@@ -245,7 +245,8 @@ export function buildVerifiedDeletionTransition(input: {
     input.request.kind !== 'deletion' ||
     input.request.status !== 'in_review' ||
     !input.report.complete ||
-    input.report.privacyRequestId !== input.request.id
+    input.report.privacyRequestId !== input.request.id ||
+    !hasRequiredDeletionTargetClasses(input.report.receipts)
   )
     throw new Error('Deletion fulfillment is not eligible for transition');
   return {
