@@ -71,6 +71,8 @@ export interface TransitionPrivacyRequest {
     readonly requestId: string;
     readonly retentionPolicyRef: string;
     readonly occurredAt: string;
+    readonly actorType?: 'consumer' | 'system';
+    readonly actorId?: string | null;
   };
 }
 

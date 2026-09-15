@@ -1,4 +1,7 @@
-import type { PrivacyRequest } from './privacy-request';
+import type {
+  PrivacyRequest,
+  TransitionPrivacyRequest,
+} from './privacy-request';
 import {
   isRetentionHoldActive,
   type RetentionHoldRepository,
@@ -209,6 +212,46 @@ export async function reconcilePersistedDeletionFulfillment(
     receipts: receipts.filter(
       (receipt): receipt is PersistedDeletionTargetReceipt => receipt !== null,
     ),
+  };
+}
+
+export function buildVerifiedDeletionTransition(input: {
+  readonly request: PrivacyRequest;
+  readonly report: DeletionFulfillmentReport;
+  readonly eventId: string;
+  readonly auditId: string;
+  readonly auditRequestId: string;
+  readonly retentionPolicyRef: string;
+  readonly occurredAt: string;
+}): TransitionPrivacyRequest {
+  if (
+    input.request.kind !== 'deletion' ||
+    input.request.status !== 'in_review' ||
+    !input.report.complete ||
+    input.report.privacyRequestId !== input.request.id
+  )
+    throw new Error('Deletion fulfillment is not eligible for transition');
+  return {
+    requestId: input.request.id,
+    userId: input.request.userId,
+    expectedVersion: input.request.version,
+    event: {
+      id: input.eventId,
+      requestId: input.request.id,
+      userId: input.request.userId,
+      fromStatus: 'in_review',
+      toStatus: 'fulfilled',
+      reasonCode: 'deletion_fulfillment_verified',
+      occurredAt: input.occurredAt,
+    },
+    audit: {
+      id: input.auditId,
+      requestId: input.auditRequestId,
+      retentionPolicyRef: input.retentionPolicyRef,
+      occurredAt: input.occurredAt,
+      actorType: 'system',
+      actorId: null,
+    },
   };
 }
 

@@ -163,8 +163,8 @@ export function createPostgresPrivacyRequestRepository(
         await insertAuditEvent(client, {
           id: input.audit.id,
           eventKey: 'privacy.request_transitioned',
-          actorType: 'consumer',
-          actorId: current.user_id,
+          actorType: input.audit.actorType ?? 'consumer',
+          actorId: input.audit.actorId ?? current.user_id,
           subjectId: current.user_id,
           resourceType: 'privacy_request',
           resourceId: current.id,
