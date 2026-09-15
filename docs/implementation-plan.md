@@ -77,17 +77,17 @@ G8 em implementação parcial: o orquestrador provider-neutral executa plano exp
 
 ADR-044 foi aceita para o próximo gate de G8: ciclo operacional de retenção/exclusão, bloqueio jurídico documentado, recibos mínimos e condição de conclusão. Até sua implementação validada, nenhum pedido é concluído automaticamente e a captura pública de saúde continua bloqueada.
 
-G8/ADR-044 em fundação: PostgreSQL conserva eventos append-only de aplicação/liberação de bloqueio jurídico e recibos opacos por target de exclusão. Os registros não aceitam payload de saúde, texto livre ou contagens. A qualificação de bloqueio, autorização de operador, montagem de plano, execução agendada e transição final permanecem condicionadas aos slices seguintes.
+G8/ADR-044 em fundação: PostgreSQL conserva eventos append-only de aplicação/liberação de bloqueio jurídico e recibos opacos por target de exclusão. Os registros não aceitam payload de saúde, texto livre ou contagens. A qualificação de bloqueio, autorização de operador, montagem de plano e execução agendada permanecem condicionadas aos slices seguintes.
 
-ADR-045 foi aceita para completar a evidência temporal mínima do bloqueio jurídico: cada evento agora preserva revisão e expiração em UTC, e a consulta por titular/referência permite avaliação fail-closed da vigência. O vínculo entre recibo e bloqueio, executor autorizado, ciclo agendado e transição final continuam pendentes; nenhum pedido é concluído automaticamente.
+ADR-045 foi aceita para completar a evidência temporal mínima do bloqueio jurídico: cada evento agora preserva revisão e expiração em UTC, e a consulta por titular/referência permite avaliação fail-closed da vigência. O vínculo entre recibo e bloqueio foi implementado; executor autorizado e ciclo agendado continuam pendentes.
 
 ADR-046 foi aceita para vincular recibo retido ao ledger do mesmo titular. O orquestrador interno só aceita um target retido quando há hold documentado, ativo e não vencido; falhas mantêm a solicitação incompleta. A transição de workflow e a execução operacional seguem bloqueadas.
 
 G8 em fundação: recibos persistidos podem ser relidos somente pelo pedido e titular correspondentes, em ordem determinística, para que uma futura transição interna valide a evidência já conservada. Esta leitura não altera estado nem habilita executor, transição automática ou operação pública.
 
-G8 em fundação: a reconciliação interna exige cobertura persistida de cada target do plano e revalida retenções contra o hold vigente do titular. Ausência, falha ou evidência de outro titular mantém o resultado incompleto; a transição de workflow continua pendente.
+G8 em fundação: a reconciliação interna exige cobertura persistida de cada target do plano e revalida retenções contra o hold vigente do titular. Ausência, falha ou evidência de outro titular mantém o resultado incompleto; a transição interna versionada ocorre somente após essa reconciliação.
 
-ADR-047 foi aceita: uma transição preparada após reconciliação completa é atribuída ao sistema, nunca ao consumidor. A execução transacional por executor autorizado permanece pendente.
+ADR-047 foi aceita: uma transição preparada após reconciliação completa é atribuída ao sistema, nunca ao consumidor. A persistência PostgreSQL preserva o ator `system` sem identificador de consumidor.
 
 ADR-048 foi aceita: a finalização interna relê e reconcilia evidências persistidas antes da transição versionada. Ausência de target ou conflito mantém o pedido sem mudança; exposição pública e agendamento permanecem pendentes.
 
