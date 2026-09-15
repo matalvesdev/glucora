@@ -153,6 +153,65 @@ export async function runRetentionAwareDeletionFulfillment(
   };
 }
 
+export async function reconcilePersistedDeletionFulfillment(
+  request: PrivacyRequest,
+  targets: readonly Pick<DeletionTargetPort, 'targetId' | 'targetClass'>[],
+  persisted: readonly PersistedDeletionTargetReceipt[],
+  holds: RetentionHoldRepository,
+  evaluatedAt: string,
+): Promise<DeletionFulfillmentReport> {
+  if (request.kind !== 'deletion' || request.status !== 'in_review')
+    throw new Error('Deletion request is not eligible for fulfillment');
+  if (
+    targets.length === 0 ||
+    new Set(targets.map(({ targetId }) => targetId)).size !== targets.length
+  )
+    throw new Error('Invalid deletion target plan');
+  const receipts = targets.map((target) => {
+    const matching = persisted
+      .filter(
+        (receipt) =>
+          receipt.privacyRequestId === request.id &&
+          receipt.userId === request.userId &&
+          receipt.targetId === target.targetId &&
+          receipt.targetClass === target.targetClass,
+      )
+      .sort(
+        (left, right) =>
+          Date.parse(right.recordedAt) - Date.parse(left.recordedAt) ||
+          right.id.localeCompare(left.id),
+      );
+    return matching[0] ?? null;
+  });
+  const retained = await Promise.all(
+    receipts.map(async (receipt) => {
+      if (!receipt || receipt.outcome !== 'retained' || !receipt.legalHoldRef)
+        return false;
+      const events = await holds.listForHold(
+        request.userId,
+        receipt.legalHoldRef,
+      );
+      return (
+        events.every(
+          (event) =>
+            event.userId === request.userId &&
+            event.reasonCode === 'legal_hold_documented',
+        ) && isRetentionHoldActive(events, receipt.legalHoldRef, evaluatedAt)
+      );
+    }),
+  );
+  return {
+    privacyRequestId: request.id,
+    complete: receipts.every(
+      (receipt, index) =>
+        Boolean(receipt) && (receipt!.outcome === 'deleted' || retained[index]),
+    ),
+    receipts: receipts.filter(
+      (receipt): receipt is PersistedDeletionTargetReceipt => receipt !== null,
+    ),
+  };
+}
+
 export async function runAndRecordDeletionFulfillment(
   request: PrivacyRequest,
   targets: readonly DeletionTargetPort[],
