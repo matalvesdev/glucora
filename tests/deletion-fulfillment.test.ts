@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   runDeletionFulfillment,
+  buildVerifiedDeletionTransition,
   reconcilePersistedDeletionFulfillment,
   runRetentionAwareDeletionFulfillment,
   runAndRecordDeletionFulfillment,
@@ -163,6 +164,26 @@ describe('deletion fulfillment boundary', () => {
         '2026-01-15T00:00:00.000Z',
       ),
     ).resolves.toMatchObject({ complete: false, receipts: [receipt] });
+  });
+
+  it('attributes a verified deletion transition to the system', () => {
+    expect(
+      buildVerifiedDeletionTransition({
+        request,
+        report: { privacyRequestId: request.id, complete: true, receipts: [] },
+        eventId: 'dse_synthetictransition01',
+        auditId: 'aud_synthetictransition01',
+        auditRequestId: 'req_synthetictransition01',
+        retentionPolicyRef: 'retention-synthetic-v1',
+        occurredAt: '2026-01-02T01:00:00.000Z',
+      }),
+    ).toMatchObject({
+      event: {
+        toStatus: 'fulfilled',
+        reasonCode: 'deletion_fulfillment_verified',
+      },
+      audit: { actorType: 'system', actorId: null },
+    });
   });
 
   it('persists every safe receipt before returning the report', async () => {
