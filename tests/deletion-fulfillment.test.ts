@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   runDeletionFulfillment,
+  runRetentionAwareDeletionFulfillment,
   runAndRecordDeletionFulfillment,
   type DeletionTargetPort,
   type PrivacyRequest,
@@ -30,6 +31,7 @@ const target = (
     reasonCode:
       outcome === 'deleted' ? 'deletion_confirmed' : 'legal_hold_documented',
     evidenceRef: `evidence-${targetId}`,
+    legalHoldRef: outcome === 'retained' ? 'hold-synthetic-0001' : null,
     recordedAt: '2026-01-02T01:00:00.000Z',
   }),
 });
@@ -69,6 +71,7 @@ describe('deletion fulfillment boundary', () => {
         outcome: 'retained',
         reasonCode: 'retention_pending',
         evidenceRef: 'evidence-backup',
+        legalHoldRef: null,
         recordedAt: '2026-01-02T01:00:00.000Z',
       }),
     };
@@ -76,8 +79,44 @@ describe('deletion fulfillment boundary', () => {
       runDeletionFulfillment(request, [retained]),
     ).resolves.toMatchObject({
       complete: false,
-      receipts: [{ outcome: 'retained', reasonCode: 'retention_pending' }],
+      receipts: [{ outcome: 'failed', reasonCode: 'invalid_adapter_receipt' }],
     });
+  });
+
+  it('accepts only an active documented hold for a retained target', async () => {
+    const holds = {
+      listForHold: async () => [
+        {
+          id: 'rhe_syntheticapplied001',
+          userId: request.userId,
+          holdRef: 'hold-synthetic-0001',
+          eventType: 'applied' as const,
+          reasonCode: 'legal_hold_documented',
+          responsibleRef: '00001',
+          evidenceRef: 'evidence-synthetic-0001',
+          occurredAt: '2026-01-01T00:00:00.000Z',
+          reviewAt: '2026-02-01T00:00:00.000Z',
+          expiresAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      record: async (value: never) => value,
+    };
+    await expect(
+      runRetentionAwareDeletionFulfillment(
+        request,
+        [target('backup_lifecycle', 'backup', 'retained')],
+        holds,
+        '2026-01-15T00:00:00.000Z',
+      ),
+    ).resolves.toMatchObject({ complete: true });
+    await expect(
+      runRetentionAwareDeletionFulfillment(
+        request,
+        [target('backup_lifecycle', 'backup', 'retained')],
+        holds,
+        '2026-03-01T00:00:00.000Z',
+      ),
+    ).resolves.toMatchObject({ complete: false });
   });
 
   it('converts adapter exceptions to a safe failure code', async () => {

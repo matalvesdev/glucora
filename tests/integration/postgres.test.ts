@@ -38,7 +38,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(21);
+        ).toBe(22);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -136,6 +136,12 @@ describe('real PostgreSQL migrations and readiness', () => {
             'infrastructure/migrations/0021_retention_hold_lifecycle.sql',
           ),
           join(directory, '0021_retention_hold_lifecycle.sql'),
+        );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0022_retained_receipt_hold_binding.sql',
+          ),
+          join(directory, '0022_retained_receipt_hold_binding.sql'),
         );
         await writeFile(
           join(directory, '0015_failure.sql'),
@@ -370,6 +376,7 @@ describe('real PostgreSQL migrations and readiness', () => {
               outcome: 'deleted',
               reasonCode: 'deletion_confirmed',
               evidenceRef: `privacy-request:${deletionInReview.id}`,
+              legalHoldRef: null,
               recordedAt: '2026-01-05T00:00:00.000Z',
             }),
           ).resolves.toMatchObject({

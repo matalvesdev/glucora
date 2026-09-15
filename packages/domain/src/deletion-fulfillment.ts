@@ -1,4 +1,8 @@
 import type { PrivacyRequest } from './privacy-request';
+import {
+  isRetentionHoldActive,
+  type RetentionHoldRepository,
+} from './retention-governance';
 
 export type DeletionTargetClass =
   'canonical' | 'projection' | 'vendor' | 'backup';
@@ -11,6 +15,7 @@ export interface DeletionTargetReceipt {
   readonly outcome: DeletionTargetOutcome;
   readonly reasonCode: string;
   readonly evidenceRef: string | null;
+  readonly legalHoldRef: string | null;
   readonly recordedAt: string;
 }
 
@@ -52,7 +57,11 @@ function validReceipt(
     receipt.targetClass === port.targetClass &&
     reasonCodePattern.test(receipt.reasonCode) &&
     Number.isFinite(Date.parse(receipt.recordedAt)) &&
-    (receipt.outcome === 'failed' || Boolean(receipt.evidenceRef?.trim()))
+    (receipt.outcome === 'failed' || Boolean(receipt.evidenceRef?.trim())) &&
+    (receipt.outcome === 'retained'
+      ? receipt.reasonCode === 'legal_hold_documented' &&
+        Boolean(receipt.legalHoldRef?.trim())
+      : receipt.legalHoldRef === null)
   );
 }
 
@@ -84,6 +93,7 @@ export async function runDeletionFulfillment(
               outcome: 'failed',
               reasonCode: 'invalid_adapter_receipt',
               evidenceRef: null,
+              legalHoldRef: null,
               recordedAt: request.updatedAt,
             },
       );
@@ -94,6 +104,7 @@ export async function runDeletionFulfillment(
         outcome: 'failed',
         reasonCode: 'adapter_failure',
         evidenceRef: null,
+        legalHoldRef: null,
         recordedAt: request.updatedAt,
       });
     }
@@ -104,6 +115,37 @@ export async function runDeletionFulfillment(
     // Until an executor performs that lookup, fail closed and keep the request open.
     complete: receipts.every(({ outcome }) => outcome === 'deleted'),
     receipts,
+  };
+}
+
+export async function runRetentionAwareDeletionFulfillment(
+  request: PrivacyRequest,
+  targets: readonly DeletionTargetPort[],
+  holds: RetentionHoldRepository,
+  evaluatedAt: string,
+): Promise<DeletionFulfillmentReport> {
+  const report = await runDeletionFulfillment(request, targets);
+  const retained = await Promise.all(
+    report.receipts.map(async (receipt) => {
+      if (receipt.outcome !== 'retained' || !receipt.legalHoldRef) return false;
+      const events = await holds.listForHold(
+        request.userId,
+        receipt.legalHoldRef,
+      );
+      return (
+        events.every(
+          (event) =>
+            event.userId === request.userId &&
+            event.reasonCode === 'legal_hold_documented',
+        ) && isRetentionHoldActive(events, receipt.legalHoldRef, evaluatedAt)
+      );
+    }),
+  );
+  return {
+    ...report,
+    complete: report.receipts.every(
+      (receipt, index) => receipt.outcome === 'deleted' || retained[index],
+    ),
   };
 }
 
