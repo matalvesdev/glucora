@@ -72,7 +72,7 @@ function hasRequiredDeletionTargetClasses(
 }
 
 function validReceipt(
-  port: DeletionTargetPort,
+  port: Pick<DeletionTargetPort, 'targetId' | 'targetClass'>,
   receipt: DeletionTargetReceipt,
 ): boolean {
   return (
@@ -201,7 +201,8 @@ export async function reconcilePersistedDeletionFulfillment(
           Date.parse(right.recordedAt) - Date.parse(left.recordedAt) ||
           right.id.localeCompare(left.id),
       );
-    return matching[0] ?? null;
+    const latest = matching[0];
+    return latest && validReceipt(target, latest) ? latest : null;
   });
   const retained = await Promise.all(
     receipts.map(async (receipt) => {
