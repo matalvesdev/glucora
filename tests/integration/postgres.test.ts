@@ -9,6 +9,7 @@ import { createDatabase } from '../../services/api/src/database';
 import { buildApp } from '../../services/api/src/app';
 import { createDevelopmentIdentityAdapter } from '../../services/api/src/modules/identity/identity-adapter';
 import { createLogger } from '../../packages/observability/src/index';
+import { finalizeVerifiedDeletion } from '../../packages/domain/src/index';
 describe('real PostgreSQL migrations and readiness', () => {
   it('applies once, checks history, rolls back failed DDL and detects schema availability', async () => {
     const connectionString = process.env.TEST_DATABASE_URL;
@@ -402,6 +403,34 @@ describe('real PostgreSQL migrations and readiness', () => {
               'usr_syntheticconsumer002',
             ),
           ).resolves.toEqual([]);
+          for (const receipt of [
+            {
+              id: 'drc_syntheticprojection01',
+              targetId: 'timeline_projection',
+              targetClass: 'projection' as const,
+            },
+            {
+              id: 'drc_syntheticvendor00001',
+              targetId: 'synthetic_vendor',
+              targetClass: 'vendor' as const,
+            },
+            {
+              id: 'drc_syntheticbackup00001',
+              targetId: 'backup_lifecycle',
+              targetClass: 'backup' as const,
+            },
+          ]) {
+            await ready.deletionTargetReceipts.record({
+              ...receipt,
+              privacyRequestId: deletionInReview.id,
+              userId: deletionInReview.userId,
+              outcome: 'deleted',
+              reasonCode: 'deletion_confirmed',
+              evidenceRef: `privacy-request:${deletionInReview.id}`,
+              legalHoldRef: null,
+              recordedAt: '2026-01-05T00:00:00.000Z',
+            });
+          }
           await expect(
             ready.retentionHolds.record({
               id: 'rhe_syntheticholdapplied01',
@@ -442,27 +471,25 @@ describe('real PostgreSQL migrations and readiness', () => {
           await expect(
             ready.consents.listHistory(deletionRequest.userId, { limit: 10 }),
           ).resolves.toEqual([]);
-          const deletionFulfilled = await ready.privacyRequests.transition({
-            requestId: deletionInReview.id,
-            userId: deletionInReview.userId,
-            expectedVersion: deletionInReview.version,
-            event: {
-              id: 'dse_syntheticdeletion003',
-              requestId: deletionInReview.id,
-              userId: deletionInReview.userId,
-              fromStatus: 'in_review',
-              toStatus: 'fulfilled',
-              reasonCode: 'deletion_fulfillment_verified',
-              occurredAt: '2026-01-05T01:00:00.000Z',
-            },
-            audit: {
-              id: 'aud_syntheticdeletion003',
-              requestId: 'b7e7d2b1-67be-4ae7-b0b7-8d4ad5d47a45',
-              retentionPolicyRef: 'synthetic-retention-review-ref',
-              occurredAt: '2026-01-05T01:00:00.000Z',
-              actorType: 'system',
-              actorId: null,
-            },
+          const deletionFulfilled = await finalizeVerifiedDeletion({
+            request: deletionInReview,
+            targets: [
+              {
+                targetId: 'canonical_health_records',
+                targetClass: 'canonical',
+              },
+              { targetId: 'timeline_projection', targetClass: 'projection' },
+              { targetId: 'synthetic_vendor', targetClass: 'vendor' },
+              { targetId: 'backup_lifecycle', targetClass: 'backup' },
+            ],
+            receipts: ready.deletionTargetReceipts,
+            holds: ready.retentionHolds,
+            requests: ready.privacyRequests,
+            eventId: 'dse_syntheticdeletion003',
+            auditId: 'aud_syntheticdeletion003',
+            auditRequestId: 'b7e7d2b1-67be-4ae7-b0b7-8d4ad5d47a45',
+            retentionPolicyRef: 'synthetic-retention-review-ref',
+            occurredAt: '2026-01-05T01:00:00.000Z',
           });
           expect(deletionFulfilled).toMatchObject({
             status: 'fulfilled',
