@@ -37,7 +37,8 @@ jobs:
       - run: pnpm audit --audit-level high
       - run: pnpm env:init
       - run: docker compose --env-file .env.local -f infrastructure/compose.yaml config --quiet
-      - run: pnpm db:up
+      - name: Start PostgreSQL
+        run: timeout 120s pnpm db:up
       - run: pnpm db:migrate
       - name: Backup and isolated restore drill
         run: pnpm db:restore-drill
@@ -63,5 +64,5 @@ jobs:
           name: backup-restore-manifest
           path: .local/backups/*.manifest.json
           retention-days: 30
-      - run: if test -f .env.local; then pnpm db:down; fi
+      - run: if test -f .env.local; then timeout 60s pnpm db:down; fi
         if: always()
