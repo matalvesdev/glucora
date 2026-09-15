@@ -170,10 +170,23 @@ describe('deletion fulfillment boundary', () => {
   });
 
   it('attributes a verified deletion transition to the system', () => {
+    const receipts = [
+      { targetId: 'canonical_records', targetClass: 'canonical' as const },
+      { targetId: 'timeline_projection', targetClass: 'projection' as const },
+      { targetId: 'synthetic_vendor', targetClass: 'vendor' as const },
+      { targetId: 'backup_lifecycle', targetClass: 'backup' as const },
+    ].map((target) => ({
+      ...target,
+      outcome: 'deleted' as const,
+      reasonCode: 'deletion_confirmed',
+      evidenceRef: `evidence-${target.targetId}`,
+      legalHoldRef: null,
+      recordedAt: '2026-01-02T01:00:00.000Z',
+    }));
     expect(
       buildVerifiedDeletionTransition({
         request,
-        report: { privacyRequestId: request.id, complete: true, receipts: [] },
+        report: { privacyRequestId: request.id, complete: true, receipts },
         eventId: 'dse_synthetictransition01',
         auditId: 'aud_synthetictransition01',
         auditRequestId: 'req_synthetictransition01',
@@ -187,6 +200,34 @@ describe('deletion fulfillment boundary', () => {
       },
       audit: { actorType: 'system', actorId: null },
     });
+  });
+
+  it('refuses a direct transition report that omits a required target class', () => {
+    expect(() =>
+      buildVerifiedDeletionTransition({
+        request,
+        report: {
+          privacyRequestId: request.id,
+          complete: true,
+          receipts: [
+            {
+              targetId: 'canonical_records',
+              targetClass: 'canonical',
+              outcome: 'deleted',
+              reasonCode: 'deletion_confirmed',
+              evidenceRef: 'evidence-canonical',
+              legalHoldRef: null,
+              recordedAt: '2026-01-02T01:00:00.000Z',
+            },
+          ],
+        },
+        eventId: 'dse_synthetictransition01',
+        auditId: 'aud_synthetictransition01',
+        auditRequestId: 'req_synthetictransition01',
+        retentionPolicyRef: 'retention-synthetic-v1',
+        occurredAt: '2026-01-02T01:00:00.000Z',
+      }),
+    ).toThrow('not eligible');
   });
 
   it('keeps a request unchanged when persisted evidence is incomplete', async () => {
