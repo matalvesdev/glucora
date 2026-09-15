@@ -41,7 +41,7 @@ jobs:
         run: timeout 120s pnpm db:up
       - run: pnpm db:migrate
       - name: Backup and isolated restore drill
-        run: pnpm db:restore-drill
+        run: timeout 180s pnpm db:restore-drill
       - name: PostgreSQL integration
         run: |
           set -a
