@@ -169,6 +169,39 @@ describe('deletion fulfillment boundary', () => {
     ).resolves.toMatchObject({ complete: false, receipts: [receipt] });
   });
 
+  it('does not accept malformed persisted evidence as coverage', async () => {
+    const targets = [
+      { targetId: 'canonical_records', targetClass: 'canonical' as const },
+      { targetId: 'timeline_projection', targetClass: 'projection' as const },
+      { targetId: 'synthetic_vendor', targetClass: 'vendor' as const },
+      { targetId: 'backup_lifecycle', targetClass: 'backup' as const },
+    ];
+    const persisted = targets.map((target, index) => ({
+      id: `drc_syntheticinvalid00${index}`,
+      privacyRequestId: request.id,
+      userId: request.userId,
+      ...target,
+      outcome: 'deleted' as const,
+      reasonCode: 'deletion_confirmed',
+      evidenceRef:
+        target.targetClass === 'vendor' ? null : `evidence-${target.targetId}`,
+      legalHoldRef: null,
+      recordedAt: '2026-01-02T01:00:00.000Z',
+    }));
+    await expect(
+      reconcilePersistedDeletionFulfillment(
+        request,
+        targets,
+        persisted,
+        { record: async (value: never) => value, listForHold: async () => [] },
+        '2026-01-15T00:00:00.000Z',
+      ),
+    ).resolves.toMatchObject({
+      complete: false,
+      receipts: expect.not.arrayContaining([persisted[2]]),
+    });
+  });
+
   it('attributes a verified deletion transition to the system', () => {
     const receipts = [
       { targetId: 'canonical_records', targetClass: 'canonical' as const },
