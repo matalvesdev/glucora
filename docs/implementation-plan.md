@@ -51,6 +51,8 @@ Iniciativa D iniciada: D1/D5 possuem projeção cronológica descartável e rebu
 
 D2–D4/D7 em fundação interna: leitura exige autorização completa antes do repository, suporta filtros limitados por período/categoria/origem, agrupamento pelo dia local e estado vazio que não interpreta ausência como evento negativo. A API pública e a UX aguardam finalidade real e critérios de aceite aprovados.
 
+D2–D4/D7 em fundação interna: parâmetros de consulta, período e cursor opaco são validados antes da consulta PostgreSQL; filtros malformados são rejeitados sem atingir a projeção.
+
 Iniciativa E iniciada: E1–E3 possuem composição determinística interna de inventário por período, categoria e origem, sempre acompanhada de limitações explícitas. O registro de risco propõe R0; persistência, perguntas, exportação, compartilhamento e exposição aguardam gates.
 
 E3/E7 em fundação: relatório determinístico imutável preserva snapshot, referências/versões, idempotência e auditoria atômica. ADR-023 permanece PROPOSED; retenção real, exportação, compartilhamento e exposição continuam condicionados.

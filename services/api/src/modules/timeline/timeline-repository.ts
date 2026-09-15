@@ -1,5 +1,9 @@
 import type { Pool } from 'pg';
-import type { TimelineItem, TimelineRepository } from '@glucora/domain';
+import {
+  validateTimelineListQuery,
+  type TimelineItem,
+  type TimelineRepository,
+} from '@glucora/domain';
 
 interface Row {
   id: string;
@@ -75,11 +79,7 @@ export function createPostgresTimelineRepository(
       }
     },
     async list(userId, query) {
-      if (
-        !Number.isInteger(query.limit) ||
-        query.limit < 1 ||
-        query.limit > 100
-      )
+      if (!validateTimelineListQuery(query).ok)
         throw new Error('Invalid timeline page limit');
       const values: unknown[] = [userId, query.limit];
       let filters = '';
