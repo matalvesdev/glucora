@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   runDeletionFulfillment,
   buildVerifiedDeletionTransition,
+  finalizeVerifiedDeletion,
   reconcilePersistedDeletionFulfillment,
   runRetentionAwareDeletionFulfillment,
   runAndRecordDeletionFulfillment,
@@ -184,6 +185,37 @@ describe('deletion fulfillment boundary', () => {
       },
       audit: { actorType: 'system', actorId: null },
     });
+  });
+
+  it('keeps a request unchanged when persisted evidence is incomplete', async () => {
+    const transition = vi.fn();
+    await expect(
+      finalizeVerifiedDeletion({
+        request,
+        targets: [{ targetId: 'canonical_records', targetClass: 'canonical' }],
+        receipts: {
+          record: async (value) => value,
+          listForRequest: async () => [],
+        },
+        holds: {
+          record: async (value: never) => value,
+          listForHold: async () => [],
+        },
+        requests: {
+          transition,
+          create: vi.fn(),
+          findById: vi.fn(),
+          history: vi.fn(),
+          listOwn: vi.fn(),
+        },
+        eventId: 'dse_synthetictransition01',
+        auditId: 'aud_synthetictransition01',
+        auditRequestId: 'req_synthetictransition01',
+        retentionPolicyRef: 'retention-synthetic-v1',
+        occurredAt: '2026-01-02T01:00:00.000Z',
+      }),
+    ).rejects.toThrow('not eligible');
+    expect(transition).not.toHaveBeenCalled();
   });
 
   it('persists every safe receipt before returning the report', async () => {

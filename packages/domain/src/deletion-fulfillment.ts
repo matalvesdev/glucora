@@ -1,5 +1,6 @@
 import type {
   PrivacyRequest,
+  PrivacyRequestRepository,
   TransitionPrivacyRequest,
 } from './privacy-request';
 import {
@@ -253,6 +254,33 @@ export function buildVerifiedDeletionTransition(input: {
       actorId: null,
     },
   };
+}
+
+export async function finalizeVerifiedDeletion(input: {
+  readonly request: PrivacyRequest;
+  readonly targets: readonly Pick<
+    DeletionTargetPort,
+    'targetId' | 'targetClass'
+  >[];
+  readonly receipts: DeletionTargetReceiptRepository;
+  readonly holds: RetentionHoldRepository;
+  readonly requests: PrivacyRequestRepository;
+  readonly eventId: string;
+  readonly auditId: string;
+  readonly auditRequestId: string;
+  readonly retentionPolicyRef: string;
+  readonly occurredAt: string;
+}): Promise<PrivacyRequest> {
+  const report = await reconcilePersistedDeletionFulfillment(
+    input.request,
+    input.targets,
+    await input.receipts.listForRequest(input.request.id, input.request.userId),
+    input.holds,
+    input.occurredAt,
+  );
+  return input.requests.transition(
+    buildVerifiedDeletionTransition({ ...input, report }),
+  );
 }
 
 export async function runAndRecordDeletionFulfillment(
