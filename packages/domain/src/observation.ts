@@ -107,6 +107,22 @@ export type ObservationValidationError =
   | 'invalid_status'
   | 'invalid_version';
 
+export type ProvenanceValidationError =
+  | 'invalid_id'
+  | 'invalid_user_id'
+  | 'invalid_source_type'
+  | 'invalid_source_id'
+  | 'invalid_transformation_ref'
+  | 'invalid_timestamp'
+  | 'invalid_temporal_order';
+
+export type ProvenanceResult =
+  | { readonly ok: true; readonly value: ProvenanceRecord }
+  | {
+      readonly ok: false;
+      readonly errors: readonly ProvenanceValidationError[];
+    };
+
 export type ObservationResult =
   | { readonly ok: true; readonly value: QuantitativeObservation }
   | {
@@ -147,6 +163,35 @@ function offsetFor(timestampValue: string, timeZone: string): number | null {
   } catch {
     return null;
   }
+}
+
+export function validateProvenanceRecord(
+  candidate: ProvenanceRecord,
+): ProvenanceResult {
+  const errors = new Set<ProvenanceValidationError>();
+  if (!/^prv_[A-Za-z0-9_-]{16,64}$/.test(candidate.id))
+    errors.add('invalid_id');
+  if (!/^usr_[A-Za-z0-9_-]{16,64}$/.test(candidate.userId))
+    errors.add('invalid_user_id');
+  if (!['manual', 'imported', 'derived'].includes(candidate.sourceType))
+    errors.add('invalid_source_type');
+  if (!opaqueId.test(candidate.sourceId)) errors.add('invalid_source_id');
+  if (
+    (candidate.sourceType === 'derived' &&
+      (!candidate.transformationRef ||
+        candidate.transformationRef.length > 200)) ||
+    (candidate.sourceType !== 'derived' && candidate.transformationRef !== null)
+  )
+    errors.add('invalid_transformation_ref');
+  const recordedAt = timestamp(candidate.recordedAt);
+  const createdAt = timestamp(candidate.createdAt);
+  if (recordedAt === null || createdAt === null)
+    errors.add('invalid_timestamp');
+  else if (recordedAt > createdAt + 5 * 60 * 1000)
+    errors.add('invalid_temporal_order');
+  return errors.size === 0
+    ? { ok: true, value: candidate }
+    : { ok: false, errors: [...errors] };
 }
 
 export function validateQuantitativeObservation(

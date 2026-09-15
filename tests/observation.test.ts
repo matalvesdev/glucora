@@ -1,9 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
   evaluateObservationCatalog,
+  validateProvenanceRecord,
   validateQuantitativeObservation,
   type QuantitativeObservation,
 } from '../packages/domain/src/index';
+
+const validProvenance = {
+  id: 'prv_syntheticorigin001',
+  userId: 'usr_syntheticconsumer001',
+  sourceType: 'manual' as const,
+  sourceId: 'src_syntheticmanual001',
+  transformationRef: null,
+  recordedAt: '2026-01-01T10:01:00.000Z',
+  createdAt: '2026-01-01T10:02:00.000Z',
+};
 
 const valid: QuantitativeObservation = {
   id: 'obs_syntheticmeasure0001',
@@ -118,5 +129,25 @@ describe('quantitative observation domain', () => {
           type.code === 'measurement' && unit.code === 'unit',
       }),
     ).toEqual({ allowed: true });
+  });
+
+  it('validates provenance structure and derived transformation evidence', () => {
+    expect(validateProvenanceRecord(validProvenance)).toEqual({
+      ok: true,
+      value: validProvenance,
+    });
+    expect(
+      validateProvenanceRecord({
+        ...validProvenance,
+        sourceType: 'derived',
+        transformationRef: null,
+      }),
+    ).toEqual({ ok: false, errors: ['invalid_transformation_ref'] });
+    expect(
+      validateProvenanceRecord({
+        ...validProvenance,
+        recordedAt: '2026-01-01T10:08:00.001Z',
+      }),
+    ).toEqual({ ok: false, errors: ['invalid_temporal_order'] });
   });
 });

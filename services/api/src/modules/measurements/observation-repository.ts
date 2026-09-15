@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import {
   validateQuantitativeObservation,
+  validateProvenanceRecord,
   type ObservationRepository,
   type ProvenanceRecord,
   type QuantitativeObservation,
@@ -81,7 +82,9 @@ export function createPostgresObservationRepository(
   return {
     async recordInitial(observation, provenance) {
       const validation = validateQuantitativeObservation(observation);
-      if (!validation.ok) throw new Error('Invalid observation');
+      const provenanceValidation = validateProvenanceRecord(provenance);
+      if (!validation.ok || !provenanceValidation.ok)
+        throw new Error('Invalid observation');
       if (observation.version !== 1 || observation.status !== 'current')
         throw new Error('Initial observation must be current version 1');
       if (
@@ -166,7 +169,12 @@ export function createPostgresObservationRepository(
     },
     async correct({ replacement, provenance, audit }) {
       const validation = validateQuantitativeObservation(replacement);
-      if (!validation.ok || replacement.status !== 'current')
+      const provenanceValidation = validateProvenanceRecord(provenance);
+      if (
+        !validation.ok ||
+        !provenanceValidation.ok ||
+        replacement.status !== 'current'
+      )
         throw new Error('Invalid replacement observation');
       if (
         provenance.id !== replacement.provenanceId ||
