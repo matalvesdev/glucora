@@ -89,6 +89,8 @@ G8 em fundação: a reconciliação interna exige cobertura persistida de cada t
 
 ADR-047 foi aceita: uma transição preparada após reconciliação completa é atribuída ao sistema, nunca ao consumidor. A execução transacional por executor autorizado permanece pendente.
 
+ADR-048 foi aceita: a finalização interna relê e reconcilia evidências persistidas antes da transição versionada. Ausência de target ou conflito mantém o pedido sem mudança; exposição pública e agendamento permanecem pendentes.
+
 E5/G1 em fundação: gerador JSON estruturado aceita apenas pedido de exportação em revisão, agrega seções explícitas, preserva versões/provenance, bloqueia dados de outro titular e gera checksum determinístico. ADR-033 permanece PROPOSED; storage, criptografia, expiração, entrega, reautenticação e adapters reais continuam pendentes.
 
 G1/G3/G7 em API condicionada: POST/GET de solicitações de privacidade exigem autenticação, conta ativa, ownership, idempotência e validação runtime; o servidor deriva titular e estado. Sem referência explícita da política de retenção, novas criações são bloqueadas, mas status existente permanece legível. ADR-034 permanece PROPOSED; identidade/política de produção, UI, verificação e fulfillment continuam pendentes.
