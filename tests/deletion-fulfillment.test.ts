@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   runDeletionFulfillment,
+  reconcilePersistedDeletionFulfillment,
   runRetentionAwareDeletionFulfillment,
   runAndRecordDeletionFulfillment,
   type DeletionTargetPort,
@@ -131,6 +132,37 @@ describe('deletion fulfillment boundary', () => {
       receipts: [{ outcome: 'failed', reasonCode: 'adapter_failure' }],
     });
     expect(JSON.stringify(report)).not.toContain('secret vendor response');
+  });
+
+  it('requires persisted coverage for every planned target', async () => {
+    const receipt = {
+      id: 'drc_syntheticpersisted01',
+      privacyRequestId: request.id,
+      userId: request.userId,
+      targetId: 'canonical_records',
+      targetClass: 'canonical' as const,
+      outcome: 'deleted' as const,
+      reasonCode: 'deletion_confirmed',
+      evidenceRef: 'evidence-canonical',
+      legalHoldRef: null,
+      recordedAt: '2026-01-02T01:00:00.000Z',
+    };
+    const holds = {
+      record: async (value: never) => value,
+      listForHold: async () => [],
+    };
+    await expect(
+      reconcilePersistedDeletionFulfillment(
+        request,
+        [
+          { targetId: 'canonical_records', targetClass: 'canonical' },
+          { targetId: 'backup_lifecycle', targetClass: 'backup' },
+        ],
+        [receipt],
+        holds,
+        '2026-01-15T00:00:00.000Z',
+      ),
+    ).resolves.toMatchObject({ complete: false, receipts: [receipt] });
   });
 
   it('persists every safe receipt before returning the report', async () => {
