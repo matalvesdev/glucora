@@ -164,7 +164,10 @@ export function createPostgresPrivacyRequestRepository(
           id: input.audit.id,
           eventKey: 'privacy.request_transitioned',
           actorType: input.audit.actorType ?? 'consumer',
-          actorId: input.audit.actorId ?? current.user_id,
+          actorId:
+            input.audit.actorId === undefined
+              ? current.user_id
+              : input.audit.actorId,
           subjectId: current.user_id,
           resourceType: 'privacy_request',
           resourceId: current.id,
