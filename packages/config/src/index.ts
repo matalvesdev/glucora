@@ -28,7 +28,16 @@ const envSchema = z.object({
   ),
   AUTH_ADAPTER: z.preprocess(
     optionalValue,
-    z.enum(['disabled', 'development']).default('disabled'),
+    z
+      .enum(['disabled', 'development', 'identity_platform'])
+      .default('disabled'),
+  ),
+  IDENTITY_PLATFORM_PROJECT_ID: z.preprocess(
+    optionalValue,
+    z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{4,62}$/)
+      .optional(),
   ),
   PRIVACY_REQUEST_RETENTION_POLICY_REF: z.preprocess(
     optionalValue,
@@ -53,5 +62,10 @@ export function readConfig(env: Record<string, string | undefined>) {
     result.data.AUTH_ADAPTER === 'development'
   )
     throw new Error('Invalid configuration: AUTH_ADAPTER');
+  if (
+    result.data.AUTH_ADAPTER === 'identity_platform' &&
+    !result.data.IDENTITY_PLATFORM_PROJECT_ID
+  )
+    throw new Error('Invalid configuration: IDENTITY_PLATFORM_PROJECT_ID');
   return result.data;
 }

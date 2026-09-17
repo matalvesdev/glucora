@@ -5,6 +5,8 @@ import { createDatabase } from './database';
 import {
   createDevelopmentIdentityAdapter,
   createDisabledIdentityAdapter,
+  createIdentityPlatformIdentityAdapter,
+  createIdentityPlatformTokenVerifier,
 } from './modules/identity/identity-adapter';
 const logger = createLogger();
 try {
@@ -13,7 +15,14 @@ try {
   const identity =
     config.AUTH_ADAPTER === 'development'
       ? createDevelopmentIdentityAdapter()
-      : createDisabledIdentityAdapter();
+      : config.AUTH_ADAPTER === 'identity_platform'
+        ? createIdentityPlatformIdentityAdapter({
+            verifier: createIdentityPlatformTokenVerifier({
+              projectId: config.IDENTITY_PLATFORM_PROJECT_ID!,
+            }),
+            subjects: database.identitySubjects,
+          })
+        : createDisabledIdentityAdapter();
   const app = buildApp({
     checkReadiness: database.checkReadiness,
     identity,
