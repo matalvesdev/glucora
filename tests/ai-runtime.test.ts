@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   AiCapabilityRegistry,
+  validateAiCapabilityDefinition,
   type AiCapability,
   type AiExecutionContext,
   type ModelGateway,
@@ -88,6 +89,27 @@ const gateway = (output: unknown): ModelGateway => ({
   }),
 });
 describe('AI runtime safety pipeline', () => {
+  it('rejects malformed capability definitions before registry activation', () => {
+    expect(validateAiCapabilityDefinition(capability)).toEqual([]);
+    expect(
+      validateAiCapabilityDefinition({
+        ...capability,
+        id: 'invalid id',
+        minimumEvidence: -1,
+        allowedTools: ['safe_tool', 'safe_tool'],
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'invalid_capability_id',
+        'invalid_minimum_evidence',
+        'invalid_allowed_tools',
+      ]),
+    );
+    expect(() =>
+      new AiCapabilityRegistry().register({ ...capability, owner: '' }),
+    ).toThrow('Invalid AI capability');
+  });
+
   it('returns structured output with minimal trace metadata', async () =>
     expect(
       executeAiCapability({
