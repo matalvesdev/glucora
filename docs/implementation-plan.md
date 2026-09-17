@@ -32,6 +32,8 @@ O inventário inicial de tratamento em `docs/compliance/data-processing-inventor
 B Identity/Consent → C Longitudinal Data → D Timeline → E Consultation → F Low-risk AI → G Privacy → H Operational Readiness.
 Antes de B: atualizar leitura de Product/Clinical/Compliance, contrato de identidade, propósito/consentimento, matriz de autorização e decisão de adapter local versus provider. Não escolher provider estratégico implicitamente.
 F exige contexto/evidência/evals; H exige responsáveis, backup/restore e aprovação operacional antes de beta.
+
+ADR-050 foi aceita: a fundação de produção será Google Cloud `southamerica-east1`, com Cloud Run, Cloud SQL PostgreSQL, Cloud Storage, Cloud Scheduler, Identity Platform e Secret Manager. O próximo slice cria a infraestrutura versionada e os adapters de produção; nenhum recurso externo foi criado por esta decisão.
 Iniciativa B em andamento: B1 concluído; B2 possui persistência mínima de conta/perfil; B3 possui autenticação local fail-closed e `/v1/me` autorizado somente para conta ativa. B4/B5 publicam a versão 1 da finalidade `self_care_health_data` aprovada na ADR-042 e expõem consulta, concessão e revogação autenticadas, idempotentes e auditadas na mesma transação. B6 mantém política deny-by-default e matriz sintética: nenhuma capacidade de captura ou leitura de saúde é liberada por este slice. B7 mantém auditoria mínima e imutável, agora com emissor de decisão de consentimento. B8 mostra a finalidade, a base legal, a retenção e o controle de autorização/revogação. A identidade de produção continua aberta; o adapter de desenvolvimento segue proibido em produção.
 As demais iniciativas permanecem backlog documentado, sem tabelas ou endpoints especulativos.
 
