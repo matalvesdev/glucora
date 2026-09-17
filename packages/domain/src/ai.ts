@@ -109,6 +109,50 @@ export interface AiCapability<Output> {
   guardOutput(value: Output): boolean;
   fallback(reason: AiAbstentionReason): Output;
 }
+
+export type AiCapabilityDefinitionError =
+  | 'invalid_capability_id'
+  | 'invalid_intended_use'
+  | 'invalid_risk'
+  | 'invalid_bundle_version'
+  | 'invalid_owner'
+  | 'invalid_required_corpus'
+  | 'invalid_minimum_evidence'
+  | 'invalid_allowed_tools';
+
+export function validateAiCapabilityDefinition(
+  capability: AiCapability<unknown>,
+): readonly AiCapabilityDefinitionError[] {
+  const errors = new Set<AiCapabilityDefinitionError>();
+  if (!/^[a-z][a-z0-9_]{2,63}$/.test(capability.id))
+    errors.add('invalid_capability_id');
+  if (!capability.intendedUse.trim() || capability.intendedUse.length > 500)
+    errors.add('invalid_intended_use');
+  if (!['R0', 'R1', 'R2', 'R3', 'R4'].includes(capability.risk))
+    errors.add('invalid_risk');
+  if (!capability.bundleVersion.trim() || capability.bundleVersion.length > 128)
+    errors.add('invalid_bundle_version');
+  if (!capability.owner.trim() || capability.owner.length > 128)
+    errors.add('invalid_owner');
+  if (
+    capability.requiredCorpus !== null &&
+    (!capability.requiredCorpus.trim() ||
+      capability.requiredCorpus.length > 128)
+  )
+    errors.add('invalid_required_corpus');
+  if (
+    !Number.isSafeInteger(capability.minimumEvidence) ||
+    capability.minimumEvidence < 0 ||
+    capability.minimumEvidence > 100
+  )
+    errors.add('invalid_minimum_evidence');
+  if (
+    new Set(capability.allowedTools).size !== capability.allowedTools.length ||
+    capability.allowedTools.some((tool) => !/^[a-z][a-z0-9_]{2,63}$/.test(tool))
+  )
+    errors.add('invalid_allowed_tools');
+  return [...errors];
+}
 export type AiAbstentionReason =
   | 'capability_unavailable'
   | 'risk_not_automatable'
@@ -145,6 +189,8 @@ export interface AiExecutionContext {
 export class AiCapabilityRegistry {
   readonly #capabilities = new Map<string, AiCapability<unknown>>();
   register<Output>(capability: AiCapability<Output>) {
+    if (validateAiCapabilityDefinition(capability).length > 0)
+      throw new Error('Invalid AI capability');
     if (this.#capabilities.has(capability.id))
       throw new Error('Duplicate AI capability');
     this.#capabilities.set(capability.id, capability as AiCapability<unknown>);
