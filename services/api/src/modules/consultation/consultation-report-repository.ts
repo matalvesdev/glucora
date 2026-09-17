@@ -3,6 +3,7 @@ import type {
   ConsultationReport,
   ConsultationReportRepository,
 } from '@glucora/domain';
+import { validateConsultationReport } from '@glucora/domain';
 import { insertAuditEvent } from '../audit/audit-repository';
 
 interface Row {
@@ -62,7 +63,8 @@ export function createPostgresConsultationReportRepository(
       const { report } = input;
       if (
         !/^rpt_[A-Za-z0-9_-]{16,64}$/.test(report.id) ||
-        !/^[a-f0-9]{64}$/.test(input.requestHash)
+        !/^[a-f0-9]{64}$/.test(input.requestHash) ||
+        !validateConsultationReport(report).ok
       )
         throw new Error('Invalid consultation report');
       if (report.summary.totalRecords !== report.sourceRefs.length)

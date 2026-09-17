@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildConsultationSummary,
+  validateConsultationReport,
   type TimelineItem,
 } from '../packages/domain/src/index';
 
@@ -24,6 +25,37 @@ const period = {
 };
 
 describe('deterministic consultation summary', () => {
+  it('accepts only a self-consistent immutable report snapshot', () => {
+    const summary = buildConsultationSummary(
+      period,
+      [timelineItem],
+      '2026-01-08T00:00:00.000Z',
+    );
+    if (!summary.ok) throw new Error('Synthetic summary must be valid');
+    const report = {
+      id: 'rpt_syntheticreport0001',
+      userId: timelineItem.userId,
+      summary: summary.value,
+      sourceRefs: [
+        {
+          timelineItemId: timelineItem.id,
+          sourceVersion: timelineItem.sourceVersion,
+        },
+      ],
+      createdAt: '2026-01-08T00:00:00.000Z',
+    };
+    expect(validateConsultationReport(report)).toMatchObject({ ok: true });
+    expect(
+      validateConsultationReport({
+        ...report,
+        summary: { ...report.summary, totalRecords: 2 },
+      }),
+    ).toEqual({
+      ok: false,
+      errors: ['invalid_summary', 'invalid_source_refs'],
+    });
+  });
+
   it('counts records without deriving a clinical interpretation', () => {
     expect(
       buildConsultationSummary(
