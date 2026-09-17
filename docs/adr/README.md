@@ -10,3 +10,5 @@ ADR-043 define a classificação e a execução canônica de exclusão necessár
 
 ADR-044 define o ciclo operacional, bloqueios jurídicos e critérios de conclusão da retenção e exclusão. Foi aceita por Mateus Alves Bassane em 2026-09-12, com evidência `00001`; ela não aprova fornecedor, operador ou mecanismo de produção.
 No new strategic decision is introduced by Initiative A.
+
+ADR-050 seleciona a fundação GCP e ADR-051 define a verificação OIDC do Identity Platform e o vínculo entre sujeito externo e conta interna. Ambas foram aceitas por Mateus Alves Bassane em 2026-09-17, com evidência `00001`; nenhuma delas cria recursos, credenciais, usuários ou fluxos públicos.
