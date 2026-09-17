@@ -195,6 +195,27 @@ describe('real PostgreSQL migrations and readiness', () => {
           await expect(
             ready.users.findById('usr_missingconsumer000'),
           ).resolves.toBeNull();
+          await client.query(
+            `INSERT INTO identity.subject_bindings (provider, subject, user_id)
+             VALUES ('identity_platform', $1, $2)`,
+            ['synthetic-identity-subject-001', 'usr_syntheticconsumer001'],
+          );
+          await expect(
+            ready.identitySubjects.resolveConsumerId(
+              'synthetic-identity-subject-001',
+            ),
+          ).resolves.toBe('usr_syntheticconsumer001');
+          await expect(
+            ready.identitySubjects.resolveConsumerId(
+              'synthetic-missing-subject',
+            ),
+          ).resolves.toBeNull();
+          await expect(
+            client.query(
+              `UPDATE identity.subject_bindings SET user_id = $1 WHERE subject = $2`,
+              ['usr_syntheticconsumer003', 'synthetic-identity-subject-001'],
+            ),
+          ).rejects.toThrow();
           const api = buildApp({
             checkReadiness: ready.checkReadiness,
             identity: createDevelopmentIdentityAdapter(),
