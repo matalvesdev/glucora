@@ -4,6 +4,8 @@ coverage/
 .env
 .env.*
 !.env.example
+infrastructure/gcp/*.tfvars
+!infrastructure/gcp/terraform.tfvars.example
 .local/
 playwright-report/
 test-results/

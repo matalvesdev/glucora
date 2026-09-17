@@ -27,6 +27,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - name: Verify GCP infrastructure contract
+        run: pnpm infra:check
       - name: Verify private beta readiness
         run: pnpm readiness:check
       - uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc

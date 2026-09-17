@@ -1,0 +1,12 @@
+# Copy outside the repository and fill only after the ADR-050 deployment gates pass.
+enable_resources = false
+project_id       = "replace-outside-git"
+environment      = "staging"
+api_image        = "southamerica-east1-docker.pkg.dev/replace/glucora/api@sha256:replace"
+database_tier    = "choose-during-capacity-review"
+database_availability_type     = "choose-during-operational-review"
+transaction_log_retention_days = 1
+
+# The fulfillment adapter, its image, URI, audience and schedule need a separate gate.
+enable_deletion_job      = false
+enable_deletion_schedule = false
