@@ -39,7 +39,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(22);
+        ).toBe(23);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -143,6 +143,12 @@ describe('real PostgreSQL migrations and readiness', () => {
             'infrastructure/migrations/0022_retained_receipt_hold_binding.sql',
           ),
           join(directory, '0022_retained_receipt_hold_binding.sql'),
+        );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0023_identity_subject_bindings.sql',
+          ),
+          join(directory, '0023_identity_subject_bindings.sql'),
         );
         await writeFile(
           join(directory, '0015_failure.sql'),

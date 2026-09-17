@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { createPostgresUserAccountRepository } from './modules/identity/user-account-repository';
+import { createPostgresIdentitySubjectRepository } from './modules/identity/identity-subject-repository';
 import {
   createPostgresConsentDecisionRecorder,
   createPostgresConsentPurposeRepository,
@@ -29,6 +30,7 @@ export function createDatabase(connectionString: string) {
   // Pool errors must not emit raw connection details or terminate the process.
   pool.on('error', () => {});
   const users = createPostgresUserAccountRepository(pool);
+  const identitySubjects = createPostgresIdentitySubjectRepository(pool);
   const consents = createPostgresConsentRepository(pool);
   const consentPurposes = createPostgresConsentPurposeRepository(pool);
   const consentDecisions = createPostgresConsentDecisionRecorder(pool);
@@ -54,6 +56,7 @@ export function createDatabase(connectionString: string) {
     },
     close: () => pool.end(),
     users,
+    identitySubjects,
     consents,
     consentPurposes,
     consentDecisions,
