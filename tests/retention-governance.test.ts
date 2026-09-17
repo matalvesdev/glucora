@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calculateHealthDataDeletionDeadlines,
   isRetentionHoldActive,
   type RetentionHoldEvent,
 } from '../packages/domain/src/index';
@@ -22,6 +23,16 @@ const event = (
 });
 
 describe('retention hold ledger', () => {
+  it('derives approved active-system and backup deadlines from a valid anchor', () => {
+    expect(
+      calculateHealthDataDeletionDeadlines('2026-01-01T00:00:00.000Z'),
+    ).toEqual({
+      activeSystemsBy: '2026-01-31T00:00:00.000Z',
+      backupsBy: '2026-04-01T00:00:00.000Z',
+    });
+    expect(calculateHealthDataDeletionDeadlines('2026-01-01')).toBeNull();
+  });
+
   it('derives the state from the latest append-only event', () => {
     expect(
       isRetentionHoldActive(

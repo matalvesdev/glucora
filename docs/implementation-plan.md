@@ -87,6 +87,8 @@ G8 em implementação parcial: o orquestrador provider-neutral executa plano exp
 
 ADR-044 foi aceita para o próximo gate de G8: ciclo operacional de retenção/exclusão, bloqueio jurídico documentado, recibos mínimos e condição de conclusão. Até sua implementação validada, nenhum pedido é concluído automaticamente e a captura pública de saúde continua bloqueada.
 
+G8/ADR-044 em fundação: o domínio calcula de modo determinístico os prazos da ADR-042 a partir de revogação ou pedido válido: 30 dias para sistemas ativos e 90 para backups. O cálculo não agenda execução nem aprova providers.
+
 G8/ADR-044 em fundação: PostgreSQL conserva eventos append-only de aplicação/liberação de bloqueio jurídico e recibos opacos por target de exclusão. Os registros não aceitam payload de saúde, texto livre ou contagens. A qualificação de bloqueio, autorização de operador, montagem de plano e execução agendada permanecem condicionadas aos slices seguintes.
 
 ADR-045 foi aceita para completar a evidência temporal mínima do bloqueio jurídico: cada evento agora preserva revisão e expiração em UTC, e a consulta por titular/referência permite avaliação fail-closed da vigência. O vínculo entre recibo e bloqueio foi implementado; executor autorizado e ciclo agendado continuam pendentes.
