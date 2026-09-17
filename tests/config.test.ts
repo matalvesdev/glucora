@@ -31,4 +31,12 @@ describe('environment boundary', () => {
       }),
     ).toThrow('AUTH_ADAPTER');
   });
+  it('requires a project identifier for Identity Platform', () => {
+    expect(() =>
+      readConfig({
+        DATABASE_URL: 'postgresql://localhost/glucora',
+        AUTH_ADAPTER: 'identity_platform',
+      }),
+    ).toThrow('IDENTITY_PLATFORM_PROJECT_ID');
+  });
 });
