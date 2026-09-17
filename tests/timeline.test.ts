@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   groupTimelineByLocalDate,
+  validateTimelineListQuery,
   type ConsumerCapabilityContext,
   type TimelineItem,
   type TimelineRepository,
@@ -52,6 +53,45 @@ const allowed: ConsumerCapabilityContext = {
 };
 
 describe('timeline application', () => {
+  it.each([
+    [{ limit: 0 }, 'invalid_limit'],
+    [{ limit: 10, sourceKind: 'other' }, 'invalid_source_kind'],
+    [{ limit: 10, category: { system: '', code: 'meal' } }, 'invalid_category'],
+    [{ limit: 10, occurredFrom: '2026-01-01' }, 'invalid_occurred_from'],
+    [
+      {
+        limit: 10,
+        occurredFrom: '2026-01-02T00:00:00.000Z',
+        occurredTo: '2026-01-01T00:00:00.000Z',
+      },
+      'invalid_occurred_range',
+    ],
+    [
+      { limit: 10, before: { occurredAt: '2026-01-01', id: 'bad' } },
+      'invalid_cursor',
+    ],
+  ])('rejects malformed timeline query %#', (query, error) => {
+    const result = validateTimelineListQuery(query as never);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors).toContain(error);
+  });
+
+  it('accepts a bounded timeline query with an opaque cursor', () => {
+    expect(
+      validateTimelineListQuery({
+        limit: 20,
+        sourceKind: 'context_event',
+        category: { system: 'synthetic.context', code: 'meal' },
+        occurredFrom: '2026-01-01T00:00:00.000Z',
+        occurredTo: '2026-01-02T00:00:00.000Z',
+        before: {
+          occurredAt: '2026-01-01T12:00:00.000Z',
+          id: 'tli_syntheticcursor001',
+        },
+      }),
+    ).toMatchObject({ ok: true });
+  });
+
   it('states explicitly that an empty projection does not prove events did not occur', () => {
     expect(groupTimelineByLocalDate([])).toEqual({
       state: 'empty',
