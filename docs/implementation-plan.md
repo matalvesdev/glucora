@@ -37,7 +37,7 @@ ADR-050 foi aceita: a fundação de produção será Google Cloud `southamerica-
 
 ADR-051 foi aceita: tokens OIDC do Identity Platform serão verificados por assinatura e claims antes de resolver um vínculo único entre sujeito externo e conta interna. O vínculo e o adapter não habilitam provisioning, login, cookies ou autorização de saúde por papel; ausência ou falha permanece deny-by-default.
 
-B3 em fundação de produção: adapter OIDC recebe somente Bearer token, exige assinatura RS256 e claims de Identity Platform antes de resolver sujeito externo; sem vínculo interno, token inválido ou erro de chave, nega a autenticação. Ele ainda não é conectado ao runtime até a migration e o workflow de vínculo serem validados.
+B3 em fundação de produção: adapter OIDC recebe somente Bearer token, exige assinatura RS256 e claims de Identity Platform antes de resolver sujeito externo; sem vínculo interno, token inválido ou erro de chave, nega a autenticação. O runtime o conecta somente por configuração explícita e permanece fail-closed sem project ID válido.
 
 B3 em fundação de produção: `identity.subject_bindings` preserva somente o vínculo único e imutável entre `identity_platform`+`sub` e conta interna. Não há endpoint de criação, alteração ou exclusão; a consulta do adapter é parametrizada e retorna ausência quando o vínculo não existe.
 
