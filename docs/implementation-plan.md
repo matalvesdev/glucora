@@ -73,6 +73,8 @@ Iniciativa H avançada: H2/H3 possuem backup custom-format, checksum e restore d
 
 H1/H4/H7 em fundação: métricas HTTP/readiness possuem campos fechados sem payload sensível; runbook registra stop conditions, contenção, recuperação e evidência; threat model cobre os módulos adicionados. Exporter, alertas, paging, owners e SLAs continuam abertos.
 
+H1/H4 em fundação: o logger remove recursivamente campos de conteúdo, saúde e credenciais de objetos estruturados antes de emissão, além da redaction do runtime. Exporter e observabilidade de produção permanecem abertos.
+
 F8/G6 em fundação: contestação append-only por output/versão usa motivos controlados, ownership e auditoria atômica; recursos contestados podem ser excluídos de contexto futuro. ADR-028 permanece PROPOSED; resolução/SLA e `ai_runs` reais continuam pendentes.
 
 H8/H9: readiness de private beta exige evidências/owners de Product, Clinical, Compliance, Security e Operations mais enrollment explícito. Os cinco gates foram aprovados por Mateus Alves Bassane com a evidência `00001`; enrollment foi habilitado por autorização explícita. CI executa a validação estrita. ADR-029 permanece PROPOSED; a decisão de arquitetura nela descrita não substitui as aprovações registradas no gate.
