@@ -57,6 +57,8 @@ Iniciativa E iniciada: E1–E3 possuem composição determinística interna de i
 
 E3/E7 em fundação: relatório determinístico imutável preserva snapshot, referências/versões, idempotência e auditoria atômica. ADR-023 permanece PROPOSED; retenção real, exportação, compartilhamento e exposição continuam condicionados.
 
+E3/E7 em fundação: o snapshot de relatório é validado antes da persistência; período, contagens, limitações, referências/versionamento e tempo de criação precisam ser coerentes. O controle não habilita exportação, compartilhamento ou exposição pública.
+
 Iniciativa G iniciada: G1/G3/G7 possuem domínio e schema de workflow para solicitações de acesso, exportação e exclusão, com versão e histórico append-only. ADR-024 permanece PROPOSED; adapters de fulfillment, SLA, verificação e UI continuam condicionados a Compliance/Operations.
 
 G1/G3/G7 em backend: repository cria solicitações com idempotência e avança estados com controle de versão; estado, evento e auditoria são atômicos. PostgreSQL também impede transições inválidas e exclusão direta. Fulfillment e exposição continuam bloqueados.
