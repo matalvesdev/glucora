@@ -20,6 +20,10 @@ export interface UserAccountRepository {
   findById(id: string): Promise<UserAccount | null>;
 }
 
+export interface IdentitySubjectRepository {
+  resolveConsumerId(subject: string): Promise<string | null>;
+}
+
 export type ConsentDecision = 'granted' | 'denied' | 'revoked';
 
 export interface ConsentEvent {
