@@ -19,6 +19,30 @@ export interface RetentionHoldRepository {
   ): Promise<readonly RetentionHoldEvent[]>;
 }
 
+export interface HealthDataDeletionDeadlines {
+  readonly activeSystemsBy: string;
+  readonly backupsBy: string;
+}
+
+const utcTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+export function calculateHealthDataDeletionDeadlines(
+  revocationOrDeletionAt: string,
+): HealthDataDeletionDeadlines | null {
+  if (!utcTimestamp.test(revocationOrDeletionAt)) return null;
+  const anchor = Date.parse(revocationOrDeletionAt);
+  if (
+    !Number.isFinite(anchor) ||
+    new Date(anchor).toISOString() !== revocationOrDeletionAt
+  )
+    return null;
+  const day = 24 * 60 * 60 * 1000;
+  return {
+    activeSystemsBy: new Date(anchor + 30 * day).toISOString(),
+    backupsBy: new Date(anchor + 90 * day).toISOString(),
+  };
+}
+
 export function isRetentionHoldActive(
   events: readonly RetentionHoldEvent[],
   holdRef: string,
