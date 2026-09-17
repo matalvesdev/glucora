@@ -92,6 +92,22 @@ describe('foundation HTTP contract and privacy', () => {
     ]);
     expect(JSON.stringify(records)).not.toContain('synthetic-sensitive-detail');
   });
+  it('removes nested health and credential fields from structured logs', () => {
+    const logs = captureLogs();
+    const logger = createLogger('info', logs.stream);
+    logger.info({
+      event: 'synthetic_event',
+      nested: {
+        token: 'synthetic-token',
+        payload: { glucose: 'synthetic-health-value' },
+        safe_code: 'safe',
+      },
+    });
+    const text = logs.text();
+    expect(text).toContain('safe_code');
+    expect(text).not.toContain('synthetic-token');
+    expect(text).not.toContain('synthetic-health-value');
+  });
   it('does not expose unimplemented health data capabilities', async () => {
     const { app } = setup();
     for (const url of ['/v1/observations', '/v1/consents', '/v1/chat'])
