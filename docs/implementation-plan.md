@@ -19,6 +19,8 @@ Estado: A1–A9 implementados e validados localmente e no CI Linux; resultados e
 Gate de saída: clone → install → env → PostgreSQL → migrate → dev → checks reproduzíveis; pendências conhecidas registradas.
 A aprovação deste gate de engenharia não significa aprovação dos gates clínicos, privacidade, produto ou beta.
 
+H6: a varredura de segredos no CI executa o binário oficial Gitleaks com versão e checksum fixos sobre o histórico Git, sem depender da licença da GitHub Action. A validação de checksum falha antes da execução caso o artefato não corresponda ao release aprovado.
+
 ## Sequência seguinte
 
 Registro de decisão: ADR-013 a ADR-041 foram aceitos por Mateus Alves Bassane em 2026-09-10, com evidência `00001`. As referências históricas a `PROPOSED` nas entradas abaixo descrevem o estado no momento daquele slice e são substituídas por este registro; limites que os ADRs mantêm abertos continuam abertos até uma decisão específica posterior.
