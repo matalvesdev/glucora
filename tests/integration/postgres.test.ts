@@ -295,7 +295,7 @@ describe('real PostgreSQL migrations and readiness', () => {
             expect(glucoseCapture.json()).toMatchObject({
               type: { system: 'http://loinc.org', code: '2339-0' },
               unit: { system: 'http://unitsofmeasure.org', code: 'mg/dL' },
-              decimal_value: '101.25',
+              decimal_value: '101.250000000',
               method: 'capillary_user_reported',
             });
             expect(
