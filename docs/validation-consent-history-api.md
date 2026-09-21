@@ -11,4 +11,4 @@ Escopo: G4, leitura própria e paginada.
 
 Validação: `pnpm check`, `pnpm test:integration` e checks remotos.
 
-Limite: nenhuma finalidade ou decisão real é criada por este slice. ADR-037 permanece PROPOSED.
+Limite: nenhuma finalidade ou decisão real é criada por este slice. ADR-037 está aceita.

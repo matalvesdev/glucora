@@ -12,4 +12,4 @@ Escopo: H5, criação e listagem própria.
 
 Validação: `pnpm check`, `pnpm test:integration` e checks remotos.
 
-Limite: roteamento, operador, triagem, SLA e fornecedor permanecem pendentes. ADR-035 e ADR-040 permanecem PROPOSED.
+Limite: roteamento, operador, triagem, SLA e fornecedor permanecem pendentes. ADR-035 e ADR-040 estão aceitas.

@@ -10,4 +10,4 @@ Escopo: E5/G1, gerador interno com fixtures sintéticas.
 
 Validação: `pnpm check`.
 
-Limite: persistência, criptografia, expiração, entrega, reautenticação e adapters reais continuam pendentes. ADR-033 permanece PROPOSED.
+Limite: persistência, criptografia, expiração, entrega, reautenticação e adapters reais continuam pendentes. ADR-033 está aceita.

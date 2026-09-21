@@ -13,4 +13,4 @@ Escopo: G7, acompanhamento paginado do próprio pedido.
 
 Validação: `pnpm check`, `pnpm test:integration` e `pnpm test:e2e`.
 
-Limite: transições e fulfillment continuam pendentes. ADR-039 permanece PROPOSED.
+Limite: transições e fulfillment continuam pendentes. ADR-039 está aceita.

@@ -10,4 +10,4 @@ Escopo: F3/F7, somente contratos e dados sintéticos.
 
 Execução reproduzível: `pnpm ai:eval` e `pnpm check`.
 
-Limite: não existe corpus, adapter, provider, capability real, threshold clínico nem aprovação de release. ADR-030 permanece PROPOSED.
+Limite: não existe corpus, adapter, provider, capability real, threshold clínico nem aprovação de release. ADR-030 está aceita.

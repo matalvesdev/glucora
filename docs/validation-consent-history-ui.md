@@ -11,4 +11,4 @@ Escopo: G4, leitura responsiva do próprio histórico.
 
 Validação: `pnpm check` e `pnpm test:e2e`.
 
-Limite: finalidades e mutações reais continuam pendentes. ADR-038 permanece PROPOSED.
+Limite: finalidades e mutações reais continuam pendentes. ADR-038 está aceita.

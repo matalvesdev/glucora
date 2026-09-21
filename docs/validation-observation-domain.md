@@ -7,4 +7,4 @@
 - `INFERENCE` não pode ser persistida como medição original;
 - nenhuma faixa, conversão ou interpretação clínica foi introduzida.
 
-ADR-017 permanece `PROPOSED`. A entrega cobre C1 no domínio e não habilita captura de dados de saúde.
+ADR-017 está aceita. A entrega cobre C1 no domínio e não habilita captura de dados de saúde.

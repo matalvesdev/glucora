@@ -13,4 +13,4 @@ Escopo: G1/G3/G7/H5, superfície web responsiva.
 
 Validação: `pnpm check` e `pnpm test:e2e`.
 
-Limite: login de produção, histórico completo, consentimentos e operação de suporte continuam pendentes. ADR-036 permanece PROPOSED.
+Limite: login de produção, histórico completo, consentimentos e operação de suporte continuam pendentes. ADR-036 está aceita.

@@ -7,4 +7,4 @@
 - histórico de recurso ordenado;
 - teste usa somente identificadores e referências sintéticas.
 
-ADR-016 permanece `PROPOSED`; nenhum emissor de evento real foi ativado.
+ADR-016 está aceita; nenhum emissor de evento real foi ativado.
