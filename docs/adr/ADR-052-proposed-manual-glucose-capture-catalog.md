@@ -1,6 +1,8 @@
 # ADR-052: catálogo inicial para captura manual de glicose
 
-Status: **PROPOSED**
+Status: **ACCEPTED**
+
+Aceita por Mateus Alves Bassane em 2026-09-21, com evidência `00001`.
 
 ## Contexto
 
