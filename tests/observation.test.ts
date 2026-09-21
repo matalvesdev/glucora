@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   evaluateObservationCatalog,
+  approvedManualGlucoseCatalog,
+  approvedManualGlucoseType,
+  approvedManualGlucoseUnit,
   validateProvenanceRecord,
   validateQuantitativeObservation,
   type QuantitativeObservation,
@@ -129,6 +132,29 @@ describe('quantitative observation domain', () => {
           type.code === 'measurement' && unit.code === 'unit',
       }),
     ).toEqual({ allowed: true });
+  });
+
+  it('allows only the approved initial manual glucose pair', () => {
+    const approved = {
+      ...valid,
+      type: approvedManualGlucoseType,
+      quantity: { decimalValue: '101.25', unit: approvedManualGlucoseUnit },
+    };
+    expect(
+      evaluateObservationCatalog(approved, approvedManualGlucoseCatalog),
+    ).toEqual({ allowed: true });
+    expect(
+      evaluateObservationCatalog(
+        {
+          ...approved,
+          quantity: {
+            ...approved.quantity,
+            unit: { ...approved.quantity.unit, code: 'mmol/L' },
+          },
+        },
+        approvedManualGlucoseCatalog,
+      ),
+    ).toEqual({ allowed: false, reason: 'unsupported_type_or_unit' });
   });
 
   it('validates provenance structure and derived transformation evidence', () => {

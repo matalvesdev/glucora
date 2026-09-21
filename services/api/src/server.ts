@@ -30,6 +30,7 @@ try {
     consents: database.consents,
     consentPurposes: database.consentPurposes,
     consentDecisions: database.consentDecisions,
+    observations: database.observations,
     privacyRequests: database.privacyRequests,
     ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
       ? {

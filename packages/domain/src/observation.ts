@@ -38,6 +38,8 @@ export interface ProvenanceRecord {
   readonly userId: string;
   readonly sourceType: ObservationSourceType;
   readonly sourceId: string;
+  /** A controlled capture method when one is known; never inferred from value or time. */
+  readonly methodCode?: 'capillary_user_reported' | null;
   readonly transformationRef: string | null;
   readonly recordedAt: string;
   readonly createdAt: string;
@@ -48,6 +50,9 @@ export interface ObservationRepository {
     observation: QuantitativeObservation,
     provenance: ProvenanceRecord,
   ): Promise<QuantitativeObservation>;
+  recordManualCapture(
+    input: ManualObservationCapture,
+  ): Promise<QuantitativeObservation>;
   findCurrent(
     id: string,
     userId: string,
@@ -57,6 +62,19 @@ export interface ObservationRepository {
     userId: string,
     query: ObservationListQuery,
   ): Promise<readonly QuantitativeObservation[]>;
+}
+
+export interface ManualObservationCapture {
+  readonly observation: QuantitativeObservation;
+  readonly provenance: ProvenanceRecord;
+  readonly idempotencyKey: string;
+  readonly requestHash: string;
+  readonly audit: {
+    readonly id: string;
+    readonly requestId: string;
+    readonly retentionPolicyRef: string;
+    readonly occurredAt: string;
+  };
 }
 
 export interface ObservationListQuery {
@@ -176,6 +194,12 @@ export function validateProvenanceRecord(
   if (!['manual', 'imported', 'derived'].includes(candidate.sourceType))
     errors.add('invalid_source_type');
   if (!opaqueId.test(candidate.sourceId)) errors.add('invalid_source_id');
+  if (
+    candidate.methodCode !== undefined &&
+    candidate.methodCode !== null &&
+    candidate.methodCode !== 'capillary_user_reported'
+  )
+    errors.add('invalid_source_id');
   if (
     (candidate.sourceType === 'derived' &&
       (!candidate.transformationRef ||

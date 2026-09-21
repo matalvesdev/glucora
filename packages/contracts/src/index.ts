@@ -107,6 +107,39 @@ export const IdempotencyHeadersSchema = Type.Object(
   },
   { additionalProperties: true },
 );
+const CodingSchema = Type.Object(
+  {
+    system: Type.String({ minLength: 1, maxLength: 128 }),
+    code: Type.String({ minLength: 1, maxLength: 128 }),
+  },
+  { additionalProperties: false },
+);
+export const CreateManualGlucoseObservationBodySchema = Type.Object(
+  {
+    decimal_value: Type.String({
+      pattern: '^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,9})?$',
+    }),
+    occurred_at: IsoTimestampSchema,
+    observed_timezone: Type.String({ minLength: 1, maxLength: 64 }),
+    utc_offset_minutes: Type.Integer({ minimum: -840, maximum: 840 }),
+  },
+  { additionalProperties: false },
+);
+export const ManualGlucoseObservationSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^obs_[A-Za-z0-9_-]{16,64}$' }),
+    type: CodingSchema,
+    decimal_value: Type.String({
+      pattern: '^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,9})?$',
+    }),
+    unit: CodingSchema,
+    occurred_at: IsoTimestampSchema,
+    source_type: Type.Literal('manual'),
+    method: Type.Literal('capillary_user_reported'),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
 export const PrivacyRequestParamsSchema = Type.Object(
   { id: Type.String({ pattern: '^dsr_[A-Za-z0-9_-]{16,64}$' }) },
   { additionalProperties: false },
@@ -269,3 +302,6 @@ export type HealthResponse = Static<typeof HealthSchema>;
 export type ErrorResponse = Static<typeof ErrorSchema>;
 export type MeResponse = Static<typeof MeSchema>;
 export type PrivacyRequestResponse = Static<typeof PrivacyRequestSchema>;
+export type ManualGlucoseObservationResponse = Static<
+  typeof ManualGlucoseObservationSchema
+>;

@@ -13,25 +13,24 @@ catálogo, aceitar uma observação pela API ou interface transformaria uma
 estrutura técnica em coleta de dado de saúde sem semântica clinicamente
 aprovada.
 
-## Decisão proposta
+## Decisão
 
 Habilitar inicialmente somente a captura manual de uma medição de glicose do
-titular, desde que Clinical aprove todos os campos abaixo em uma revisão
-registrada:
+titular. Mateus Alves Bassane aprovou os parâmetros abaixo em 2026-09-21, com
+evidência `00001`:
 
-| Decisão requerida                   | Estado nesta proposta                                                                                                            |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Sistema e código clínico da medição | Em aberto — não usar código local como substituto de classificação clínica aprovada.                                             |
-| Unidade ou unidades permitidas      | Em aberto — cada unidade deve ter regra de formato e conversão explicitamente aprovada.                                          |
-| Fonte e método aceitos              | Em aberto — delimitar se a primeira versão aceita somente inserção manual pelo titular e qual método pode ser declarado.         |
-| Contexto opcional                   | Em aberto — não inferir jejum, refeição, exercício, medicação ou sintoma a partir da medição.                                    |
-| Limites e mensagens de segurança    | Em aberto — nenhuma faixa, alerta, interpretação, diagnóstico ou recomendação terapêutica será exibida sem aprovação específica. |
+| Decisão requerida                   | Decisão aceita                                                                                                         |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Sistema e código clínico da medição | LOINC `2339-0`, `Glucose [Mass/volume] in Blood`, representado como `http://loinc.org` + `2339-0`.                     |
+| Unidade permitida                   | Somente `mg/dL`, representada como `http://unitsofmeasure.org` + `mg/dL`; não há conversão implícita.                  |
+| Fonte e método aceitos              | Inserção manual pelo próprio titular de medição capilar declarada pelo usuário, preservada como provenance controlada. |
+| Contexto opcional                   | Não aceito nesta versão; não inferir jejum, refeição, exercício, medicação ou sintoma a partir da medição.             |
+| Limites e mensagens de segurança    | Não haverá faixas, alertas, interpretação, diagnóstico ou recomendação terapêutica nesta versão.                       |
 
-A implementação só poderá ativar pares de tipo/unidade presentes no catálogo
-versionado aprovado. O servidor continuará exigindo conta ativa, ownership,
-finalidade `self_care_health_data`, consentimento vigente, idempotência,
-temporalidade e provenance. A captura preservará o valor original e não fará
-conversão implícita.
+A implementação ativa somente esse par de tipo/unidade no catálogo versionado
+aprovado. O servidor exige conta ativa, ownership, finalidade
+`self_care_health_data`, consentimento vigente, idempotência, temporalidade e
+provenance. A captura preserva o valor original e não faz conversão implícita.
 
 ## Alternativas consideradas
 
@@ -45,8 +44,8 @@ conversão implícita.
 
 ## Controles e evidência necessária
 
-- Clinical registra a escolha do código, unidades, método, regras de formato
-  e limites de apresentação, se existirem;
+- Clinical registra a escolha do código, unidade, método e a ausência de
+  limites de apresentação nesta versão;
 - Product confirma o fluxo, texto de propósito e estados vazios/erro;
 - Compliance/Security confirma a finalidade da ADR-042, consentimento,
   retenção e testes de autorização;
@@ -57,6 +56,7 @@ conversão implícita.
 
 ## Limites
 
-Esta proposta não aprova nenhum código, unidade, faixa, conversão, alerta,
-importação de dispositivo, diagnóstico, ajuste de tratamento ou dose de
-insulina. Ela não habilita endpoint, interface, coleta pública ou beta.
+Esta decisão não aprova importação de dispositivo, diagnóstico, ajuste de
+tratamento ou dose de insulina. Ela habilita somente o endpoint autenticado
+descrito acima; interface, timeline e beta continuam sujeitos aos respectivos
+gates e critérios de aceite.

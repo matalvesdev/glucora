@@ -49,7 +49,7 @@ As demais iniciativas permanecem backlog documentado, sem tabelas ou endpoints e
 
 Iniciativa C iniciada: C1 possui núcleo de domínio para observações quantitativas com valor exato, unidade, tempos UTC, origem, provenance, classe factual, status e versão. Persistência, captura e catálogos clínicos continuam bloqueados até os gates aplicáveis; ADR-017 está aceita.
 
-ADR-052 foi aceita para registrar a aprovação clínica necessária do catálogo de captura manual de glicose. Até que sistema/código, unidades, método e limites de apresentação sejam definidos e aceitos, o catálogo continua deny-by-default e nenhuma API ou UI de captura é ativada.
+ADR-052 foi aceita com LOINC `2339-0`, `mg/dL`, inserção manual capilar declarada pelo titular e ausência de faixas/alertas. C2 agora expõe somente a criação autenticada e idempotente desse registro, condicionada a conta ativa, ownership e consentimento vigente para `self_care_health_data`; não há conversão, interpretação, interface ou beta neste slice.
 
 C2/C4 em fundação: PostgreSQL e repository suportam gravação atômica de uma observação inicial e sua provenance, sem endpoint ou catálogo clínico. ADR-018 está aceita; captura real continua bloqueada.
 
