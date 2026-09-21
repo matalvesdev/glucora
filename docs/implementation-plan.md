@@ -19,6 +19,8 @@ Estado: A1–A9 implementados e validados localmente e no CI Linux; resultados e
 Gate de saída: clone → install → env → PostgreSQL → migrate → dev → checks reproduzíveis; pendências conhecidas registradas.
 A aprovação deste gate de engenharia não significa aprovação dos gates clínicos, privacidade, produto ou beta.
 
+H6: a varredura de segredos no CI executa o binário oficial Gitleaks com versão e checksum fixos sobre o histórico Git, sem depender da licença da GitHub Action. A validação de checksum falha antes da execução caso o artefato não corresponda ao release aprovado.
+
 ## Sequência seguinte
 
 Registro de decisão: ADR-013 a ADR-041 foram aceitos por Mateus Alves Bassane em 2026-09-10, com evidência `00001`. As referências históricas a `PROPOSED` nas entradas abaixo descrevem o estado no momento daquele slice e são substituídas por este registro; limites que os ADRs mantêm abertos continuam abertos até uma decisão específica posterior.
@@ -46,6 +48,8 @@ Iniciativa B em andamento: B1 concluído; B2 possui persistência mínima de con
 As demais iniciativas permanecem backlog documentado, sem tabelas ou endpoints especulativos.
 
 Iniciativa C iniciada: C1 possui núcleo de domínio para observações quantitativas com valor exato, unidade, tempos UTC, origem, provenance, classe factual, status e versão. Persistência, captura e catálogos clínicos continuam bloqueados até os gates aplicáveis; ADR-017 está aceita.
+
+ADR-052 está proposta para registrar a aprovação clínica necessária do catálogo de captura manual de glicose. Até que sistema/código, unidades, método e limites de apresentação sejam aceitos, o catálogo continua deny-by-default e nenhuma API ou UI de captura é ativada.
 
 C2/C4 em fundação: PostgreSQL e repository suportam gravação atômica de uma observação inicial e sua provenance, sem endpoint ou catálogo clínico. ADR-018 está aceita; captura real continua bloqueada.
 
