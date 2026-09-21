@@ -47,6 +47,8 @@ As demais iniciativas permanecem backlog documentado, sem tabelas ou endpoints e
 
 Iniciativa C iniciada: C1 possui núcleo de domínio para observações quantitativas com valor exato, unidade, tempos UTC, origem, provenance, classe factual, status e versão. Persistência, captura e catálogos clínicos continuam bloqueados até os gates aplicáveis; ADR-017 está aceita.
 
+ADR-052 está proposta para registrar a aprovação clínica necessária do catálogo de captura manual de glicose. Até que sistema/código, unidades, método e limites de apresentação sejam aceitos, o catálogo continua deny-by-default e nenhuma API ou UI de captura é ativada.
+
 C2/C4 em fundação: PostgreSQL e repository suportam gravação atômica de uma observação inicial e sua provenance, sem endpoint ou catálogo clínico. ADR-018 está aceita; captura real continua bloqueada.
 
 C2/C4 em fundação: a provenance agora é validada no domínio e no adapter antes da transação, incluindo identidade, fonte, timestamps e evidência de transformação para dados derivados. A validação não habilita captura pública ou catálogo clínico.
