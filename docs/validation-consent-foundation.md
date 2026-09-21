@@ -9,4 +9,4 @@ Escopo: modelo técnico B4/B5 sem finalidade, base legal ou texto real.
 - idempotência: repetição idêntica retorna o evento anterior e colisões são rejeitadas;
 - dados: fixtures exclusivamente sintéticas no banco isolado de teste.
 
-O resultado não autoriza coleta ou tratamento. ADR-014 permanece `PROPOSED` até os aceites registrados.
+O resultado não autoriza coleta ou tratamento. ADR-014 está aceita.

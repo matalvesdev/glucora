@@ -9,4 +9,4 @@ Scope: Initiative B1 and the authentication boundary of B3. No production authen
 - Development adapter accepts only a synthetic opaque consumer ID and does not log it.
 - Production configuration rejects the development adapter.
 
-ADR-013 remains PROPOSED. Identity-provider selection remains open. Consent work is held until each processing purpose has an approved legal basis, retention, owner and user-facing text; Terms acceptance will not be modeled as blanket consent.
+ADR-013 is accepted. Identity-provider selection remains open. Consent work is held until each processing purpose has an approved legal basis, retention, owner and user-facing text; Terms acceptance will not be modeled as blanket consent.

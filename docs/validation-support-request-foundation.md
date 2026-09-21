@@ -10,4 +10,4 @@ Escopo: H5, entrada persistente interna com dados sintéticos.
 
 Validação: `pnpm check` e `pnpm test:integration` com PostgreSQL real.
 
-Limite: endpoint/UI, identidade de operador, triagem, SLA, paging e fornecedor continuam pendentes. ADR-031 permanece PROPOSED.
+Limite: endpoint/UI, identidade de operador, triagem, SLA, paging e fornecedor continuam pendentes. ADR-031 está aceita.

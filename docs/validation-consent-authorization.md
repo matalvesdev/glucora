@@ -6,4 +6,4 @@
 - integração PostgreSQL confirma que revogação posterior vira o estado atual;
 - fixtures são sintéticas e nenhuma capacidade real foi ativada.
 
-ADR-015 permanece `PROPOSED`. O mapeamento de capacidades reais depende de aceite de Compliance e Security.
+ADR-015 está aceita. O mapeamento de capacidades reais depende de aceite de Compliance e Security.

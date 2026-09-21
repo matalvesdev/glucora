@@ -10,4 +10,4 @@ Escopo: G8, orquestração provider-neutral com fixtures sintéticas.
 
 Validação: `pnpm check`.
 
-Limite: nenhum adapter apaga dados reais; plano, retenção, subprocessadores, autorização e transição final aguardam aprovação. ADR-032 permanece PROPOSED.
+Limite: nenhum adapter apaga dados reais; plano, retenção, subprocessadores, autorização e transição final aguardam aprovação. ADR-032 está aceita.

@@ -11,4 +11,4 @@ Escopo: G1/G3/G7, criação e leitura de status.
 
 Validação: `pnpm check`, `pnpm test:integration` e checks remotos.
 
-Limite: identidade de produção, política aprovada, UI, verificação e fulfillment permanecem gates. ADR-034 permanece PROPOSED.
+Limite: identidade de produção, política aprovada, UI, verificação e fulfillment permanecem gates. ADR-034 está aceita.
