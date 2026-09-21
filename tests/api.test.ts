@@ -13,6 +13,7 @@ import {
   PrivacyRequestListSchema,
   SupportRequestListSchema,
   SupportRequestSchema,
+  ManualGlucoseObservationSchema,
 } from '../packages/contracts/src/index';
 import { createDevelopmentIdentityAdapter } from '../services/api/src/modules/identity/identity-adapter';
 import type {
@@ -21,6 +22,7 @@ import type {
   ConsentPurposeRepository,
   PrivacyRequestRepository,
   SupportRequestRepository,
+  ObservationRepository,
 } from '../packages/domain/src/index';
 const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
@@ -590,6 +592,111 @@ describe('foundation HTTP contract and privacy', () => {
         })
       ).statusCode,
     ).toBe(400);
+  });
+  it('records only the approved manual glucose capture with active consent and idempotency', async () => {
+    const captures: Parameters<
+      ObservationRepository['recordManualCapture']
+    >[0][] = [];
+    const observation = {
+      recordManualCapture: async (
+        input: Parameters<ObservationRepository['recordManualCapture']>[0],
+      ) => {
+        const prior = captures.find(
+          (item) => item.idempotencyKey === input.idempotencyKey,
+        );
+        if (prior && prior.requestHash !== input.requestHash)
+          throw new Error('Idempotency key reused');
+        captures.push(input);
+        return (prior ?? input).observation;
+      },
+      recordInitial: async () => {
+        throw new Error('not used');
+      },
+      findCurrent: async () => null,
+      correct: async () => {
+        throw new Error('not used');
+      },
+      listCurrent: async () => [],
+    } satisfies ObservationRepository;
+    const purpose = {
+      id: 'pur_selfcarehealth0001',
+      purposeKey: 'self_care_health_data',
+      version: 1,
+      status: 'published' as const,
+      title: 'Synthetic health purpose',
+      noticeText: 'Synthetic consent notice.',
+      legalBasisRef: 'synthetic-legal-ref',
+      retentionPolicyRef: 'synthetic-retention-ref',
+      effectiveFrom: '2020-01-01T00:00:00.000Z',
+      retiredAt: null,
+    };
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => syntheticAccount },
+      consentPurposes: { listPublished: async () => [purpose] },
+      consents: {
+        record: async () => {
+          throw new Error('not used');
+        },
+        history: async () => [],
+        listHistory: async () => [],
+        current: async () => ({
+          id: 'cne_syntheticgrant00001',
+          userId: syntheticAccount.id,
+          purposeVersionId: purpose.id,
+          decision: 'granted',
+          channel: 'synthetic',
+          idempotencyKey: 'synthetic-grant-key',
+          occurredAt: '2026-01-01T00:00:00.000Z',
+          recordedAt: '2026-01-01T00:00:00.000Z',
+        }),
+      },
+      observations: observation,
+    });
+    apps.push(app);
+    const input = {
+      decimal_value: '101.25',
+      occurred_at: '2026-01-01T10:00:00.000Z',
+      observed_timezone: 'America/Sao_Paulo',
+      utc_offset_minutes: -180,
+    };
+    const headers = {
+      'x-glucora-dev-actor': syntheticAccount.id,
+      'idempotency-key': 'synthetic-glucose-capture-1',
+    };
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/observations',
+      headers,
+      payload: input,
+    });
+    expect(response.statusCode).toBe(201);
+    expect(Value.Check(ManualGlucoseObservationSchema, response.json())).toBe(
+      true,
+    );
+    expect(response.json()).toMatchObject({
+      type: { system: 'http://loinc.org', code: '2339-0' },
+      unit: { system: 'http://unitsofmeasure.org', code: 'mg/dL' },
+      decimal_value: '101.25',
+      source_type: 'manual',
+      method: 'capillary_user_reported',
+    });
+    expect(captures).toHaveLength(1);
+    expect(captures[0]!.provenance.methodCode).toBe('capillary_user_reported');
+    expect(captures[0]!.audit.retentionPolicyRef).toBe(
+      'synthetic-retention-ref',
+    );
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/v1/observations',
+          headers,
+          payload: { ...input, decimal_value: '102' },
+        })
+      ).statusCode,
+    ).toBe(409);
   });
   it('does not log request payloads, headers, URL values or upstream error details', async () => {
     const { app, logs } = setup(async () => {

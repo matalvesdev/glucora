@@ -206,6 +206,7 @@ export interface AuditRepository {
 }
 
 export * from './observation';
+export * from './manual-glucose-catalog';
 export * from './context-event';
 export * from './timeline';
 export * from './consultation';

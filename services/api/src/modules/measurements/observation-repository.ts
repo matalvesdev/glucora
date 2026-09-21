@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 import {
   validateQuantitativeObservation,
   validateProvenanceRecord,
+  type ManualObservationCapture,
   type ObservationRepository,
   type ProvenanceRecord,
   type QuantitativeObservation,
@@ -62,13 +63,14 @@ function map(row: ObservationRow): QuantitativeObservation {
 async function insertProvenance(client: PoolClient, value: ProvenanceRecord) {
   await client.query(
     `INSERT INTO health.provenance_records
-      (id, user_id, source_type, source_id, transformation_ref, recorded_at, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      (id, user_id, source_type, source_id, method_code, transformation_ref, recorded_at, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       value.id,
       value.userId,
       value.sourceType,
       value.sourceId,
+      value.methodCode,
       value.transformationRef,
       value.recordedAt,
       value.createdAt,
@@ -76,10 +78,132 @@ async function insertProvenance(client: PoolClient, value: ProvenanceRecord) {
   );
 }
 
+async function recordManualCapture(
+  pool: Pool,
+  input: ManualObservationCapture,
+): Promise<QuantitativeObservation> {
+  const validation = validateQuantitativeObservation(input.observation);
+  const provenanceValidation = validateProvenanceRecord(input.provenance);
+  if (!validation.ok || !provenanceValidation.ok)
+    throw new Error('Invalid observation');
+  if (
+    input.observation.version !== 1 ||
+    input.observation.status !== 'current' ||
+    input.observation.sourceType !== 'manual' ||
+    input.provenance.methodCode !== 'capillary_user_reported' ||
+    input.provenance.id !== input.observation.provenanceId ||
+    input.provenance.userId !== input.observation.userId ||
+    input.provenance.sourceType !== input.observation.sourceType ||
+    input.provenance.sourceId !== input.observation.sourceId ||
+    input.provenance.recordedAt !== input.observation.recordedAt
+  )
+    throw new Error('Invalid manual observation capture');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      `${input.observation.userId}:${input.idempotencyKey}`,
+    ]);
+    const previous = await client.query<{
+      request_hash: string;
+      observation_id: string;
+      observation_version: number;
+    }>(
+      `SELECT request_hash, observation_id, observation_version
+       FROM health.manual_observation_captures
+       WHERE user_id=$1 AND idempotency_key=$2 FOR UPDATE`,
+      [input.observation.userId, input.idempotencyKey],
+    );
+    if (previous.rowCount) {
+      const capture = previous.rows[0]!;
+      if (capture.request_hash !== input.requestHash)
+        throw new Error('Idempotency key reused');
+      const result = await client.query<ObservationRow>(
+        `SELECT ${columns} FROM health.observations
+         WHERE id=$1 AND version=$2 AND user_id=$3`,
+        [
+          capture.observation_id,
+          capture.observation_version,
+          input.observation.userId,
+        ],
+      );
+      if (!result.rows[0]) throw new Error('Manual capture record missing');
+      await client.query('COMMIT');
+      return map(result.rows[0]);
+    }
+    await insertProvenance(client, input.provenance);
+    const result = await client.query<ObservationRow>(
+      `INSERT INTO health.observations
+        (id, version, user_id, type_system, type_code, decimal_value, unit_system,
+         unit_code, occurred_at, observed_timezone, utc_offset_minutes,
+         recorded_at, ingested_at, source_type, source_id,
+         provenance_id, fact_class, status, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+       RETURNING ${columns}`,
+      [
+        input.observation.id,
+        input.observation.version,
+        input.observation.userId,
+        input.observation.type.system,
+        input.observation.type.code,
+        input.observation.quantity.decimalValue,
+        input.observation.quantity.unit.system,
+        input.observation.quantity.unit.code,
+        input.observation.occurredAt,
+        input.observation.observedTimezone,
+        input.observation.utcOffsetMinutes,
+        input.observation.recordedAt,
+        input.observation.ingestedAt,
+        input.observation.sourceType,
+        input.observation.sourceId,
+        input.observation.provenanceId,
+        input.observation.factClass,
+        input.observation.status,
+        input.observation.createdAt,
+      ],
+    );
+    await insertAuditEvent(client, {
+      id: input.audit.id,
+      eventKey: 'observation.manual_capture_recorded',
+      actorType: 'consumer',
+      actorId: input.observation.userId,
+      subjectId: input.observation.userId,
+      resourceType: 'observation',
+      resourceId: input.observation.id,
+      action: 'created',
+      outcome: 'succeeded',
+      requestId: input.audit.requestId,
+      retentionPolicyRef: input.audit.retentionPolicyRef,
+      occurredAt: input.audit.occurredAt,
+    });
+    await client.query(
+      `INSERT INTO health.manual_observation_captures
+       (user_id,idempotency_key,request_hash,observation_id,observation_version,created_at)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [
+        input.observation.userId,
+        input.idempotencyKey,
+        input.requestHash,
+        input.observation.id,
+        input.observation.version,
+        input.observation.createdAt,
+      ],
+    );
+    await client.query('COMMIT');
+    return map(result.rows[0]!);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export function createPostgresObservationRepository(
   pool: Pool,
 ): ObservationRepository {
   return {
+    recordManualCapture: (input) => recordManualCapture(pool, input),
     async recordInitial(observation, provenance) {
       const validation = validateQuantitativeObservation(observation);
       const provenanceValidation = validateProvenanceRecord(provenance);

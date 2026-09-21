@@ -39,7 +39,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(23);
+        ).toBe(24);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -150,6 +150,10 @@ describe('real PostgreSQL migrations and readiness', () => {
           ),
           join(directory, '0023_identity_subject_bindings.sql'),
         );
+        await copyFile(
+          resolve('infrastructure/migrations/0024_manual_glucose_capture.sql'),
+          join(directory, '0024_manual_glucose_capture.sql'),
+        );
         await writeFile(
           join(directory, '0015_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
@@ -223,6 +227,7 @@ describe('real PostgreSQL migrations and readiness', () => {
             consents: ready.consents,
             consentPurposes: ready.consentPurposes,
             consentDecisions: ready.consentDecisions,
+            observations: ready.observations,
             privacyRequests: ready.privacyRequests,
             privacyRequestPolicy: {
               retentionPolicyRef: 'synthetic-retention-review-ref',
@@ -272,6 +277,72 @@ describe('real PostgreSQL migrations and readiness', () => {
             expect(consentRetry.json()).toMatchObject({
               id: consent.json<{ id: string }>().id,
             });
+            const glucoseCapture = await api.inject({
+              method: 'POST',
+              url: '/v1/observations',
+              headers: {
+                'x-glucora-dev-actor': 'usr_syntheticconsumer003',
+                'idempotency-key': 'synthetic-glucose-capture-1',
+              },
+              payload: {
+                decimal_value: '101.25',
+                occurred_at: '2026-01-01T10:00:00.000Z',
+                observed_timezone: 'America/Sao_Paulo',
+                utc_offset_minutes: -180,
+              },
+            });
+            expect(glucoseCapture.statusCode).toBe(201);
+            expect(glucoseCapture.json()).toMatchObject({
+              type: { system: 'http://loinc.org', code: '2339-0' },
+              unit: { system: 'http://unitsofmeasure.org', code: 'mg/dL' },
+              decimal_value: '101.250000000',
+              method: 'capillary_user_reported',
+            });
+            expect(
+              (
+                await client.query(
+                  `SELECT method_code FROM health.provenance_records
+                   WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1`,
+                  ['usr_syntheticconsumer003'],
+                )
+              ).rows,
+            ).toEqual([{ method_code: 'capillary_user_reported' }]);
+            const duplicateGlucoseCapture = await api.inject({
+              method: 'POST',
+              url: '/v1/observations',
+              headers: {
+                'x-glucora-dev-actor': 'usr_syntheticconsumer003',
+                'idempotency-key': 'synthetic-glucose-capture-1',
+              },
+              payload: {
+                decimal_value: '101.25',
+                occurred_at: '2026-01-01T10:00:00.000Z',
+                observed_timezone: 'America/Sao_Paulo',
+                utc_offset_minutes: -180,
+              },
+            });
+            expect(duplicateGlucoseCapture.statusCode).toBe(201);
+            expect(duplicateGlucoseCapture.json()).toMatchObject({
+              id: glucoseCapture.json<{ id: string }>().id,
+            });
+            expect(
+              (
+                await api.inject({
+                  method: 'POST',
+                  url: '/v1/observations',
+                  headers: {
+                    'x-glucora-dev-actor': 'usr_syntheticconsumer003',
+                    'idempotency-key': 'synthetic-glucose-capture-1',
+                  },
+                  payload: {
+                    decimal_value: '102',
+                    occurred_at: '2026-01-01T10:00:00.000Z',
+                    observed_timezone: 'America/Sao_Paulo',
+                    utc_offset_minutes: -180,
+                  },
+                })
+              ).statusCode,
+            ).toBe(409);
             const created = await api.inject({
               method: 'POST',
               url: '/v1/privacy-requests',
@@ -394,6 +465,15 @@ describe('real PostgreSQL migrations and readiness', () => {
             reasonCode: 'deletion_confirmed',
             evidenceRef: `privacy-request:${deletionInReview.id}`,
           });
+          expect(
+            (
+              await client.query(
+                `SELECT count(*)::integer AS count
+                 FROM health.manual_observation_captures WHERE user_id=$1`,
+                [deletionInReview.userId],
+              )
+            ).rows,
+          ).toEqual([{ count: 0 }]);
           await expect(
             ready.deletionTargetReceipts.record({
               id: 'drc_syntheticcanonical001',

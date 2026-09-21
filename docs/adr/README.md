@@ -14,6 +14,7 @@ No new strategic decision is introduced by Initiative A.
 ADR-050 seleciona a fundação GCP e ADR-051 define a verificação OIDC do Identity Platform e o vínculo entre sujeito externo e conta interna. Ambas foram aceitas por Mateus Alves Bassane em 2026-09-17, com evidência `00001`; nenhuma delas cria recursos, credenciais, usuários ou fluxos públicos.
 
 ADR-052 foi aceita por Mateus Alves Bassane em 2026-09-21, com evidência
-`00001`, para registrar o catálogo clínico mínimo que precisa ser definido
-antes de qualquer captura manual de glicose. Ela não escolhe código, unidade,
-faixa ou fluxo público.
+`00001`, para LOINC `2339-0`, `mg/dL`, inserção manual capilar declarada pelo
+titular e ausência de faixas ou alertas. Ela habilita apenas a captura
+autenticada e idempotente condicionada ao consentimento; interface, timeline e
+beta continuam em seus próprios gates.

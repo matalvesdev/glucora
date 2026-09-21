@@ -7,6 +7,7 @@ import {
   ConsentHistoryQuerySchema,
   ConsentHistoryResponseSchema,
   ConsentPurposeListSchema,
+  CreateManualGlucoseObservationBodySchema,
   RecordConsentDecisionBodySchema,
   CreatePrivacyRequestBodySchema,
   CreateSupportRequestBodySchema,
@@ -14,6 +15,7 @@ import {
   HealthSchema,
   IdempotencyHeadersSchema,
   MeSchema,
+  ManualGlucoseObservationSchema,
   ListSupportRequestsQuerySchema,
   PrivacyRequestParamsSchema,
   PrivacyRequestListQuerySchema,
@@ -28,6 +30,7 @@ import type {
   ConsentDecisionRecorder,
   ConsentPurposeRepository,
   ConsentRepository,
+  ObservationRepository,
   IdentityPort,
   PrivacyRequestRepository,
   PrivacyRequest,
@@ -35,6 +38,13 @@ import type {
   SupportRequestRepository,
   SupportRequestCategory,
   UserAccountRepository,
+} from '@glucora/domain';
+import {
+  approvedManualGlucoseCatalog,
+  approvedManualGlucoseType,
+  approvedManualGlucoseUnit,
+  authorizeConsumerCapability,
+  evaluateObservationCatalog,
 } from '@glucora/domain';
 import {
   createLogger,
@@ -52,6 +62,7 @@ export interface AppDependencies {
   privacyRequestPolicy?: { readonly retentionPolicyRef: string };
   supportRequests?: SupportRequestRepository;
   supportRequestPolicy?: { readonly retentionPolicyRef: string };
+  observations?: ObservationRepository;
   logger?: ReturnType<typeof createLogger>;
   metrics?: MetricSink;
 }
@@ -278,6 +289,163 @@ export function buildApp(deps: AppDependencies) {
           updated_at: account.updatedAt,
           request_id: request.id,
         };
+      },
+    );
+    routes.post(
+      '/v1/observations',
+      {
+        schema: {
+          operationId: 'createManualGlucoseObservation',
+          headers: IdempotencyHeadersSchema,
+          body: CreateManualGlucoseObservationBodySchema,
+          response: {
+            201: ManualGlucoseObservationSchema,
+            400: ErrorSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            409: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        const evaluatedAt = new Date().toISOString();
+        const purpose = (
+          await deps.consentPurposes?.listPublished(evaluatedAt)
+        )?.find((item) => item.purposeKey === 'self_care_health_data');
+        const currentConsent = purpose
+          ? await deps.consents?.current(actor.id, purpose.id)
+          : null;
+        if (
+          !authorizeConsumerCapability({
+            actor,
+            account: account ?? null,
+            subjectUserId: actor.id,
+            purpose: purpose ?? null,
+            currentConsent: currentConsent ?? null,
+            evaluatedAt,
+          }).allowed
+        )
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.observations || !purpose)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Registro temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const body = request.body as {
+          decimal_value: string;
+          occurred_at: string;
+          observed_timezone: string;
+          utc_offset_minutes: number;
+        };
+        const headers = request.headers as { 'idempotency-key': string };
+        const now = new Date().toISOString();
+        const observation = {
+          id: `obs_${randomUUID().replaceAll('-', '')}`,
+          userId: actor.id,
+          type: approvedManualGlucoseType,
+          quantity: {
+            decimalValue: body.decimal_value,
+            unit: approvedManualGlucoseUnit,
+          },
+          occurredAt: body.occurred_at,
+          observedTimezone: body.observed_timezone,
+          utcOffsetMinutes: body.utc_offset_minutes,
+          recordedAt: now,
+          ingestedAt: now,
+          sourceType: 'manual' as const,
+          sourceId: `src_${randomUUID().replaceAll('-', '')}`,
+          provenanceId: `prv_${randomUUID().replaceAll('-', '')}`,
+          factClass: 'declaration' as const,
+          status: 'current' as const,
+          version: 1,
+          createdAt: now,
+        };
+        if (
+          !evaluateObservationCatalog(observation, approvedManualGlucoseCatalog)
+            .allowed
+        )
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Registro temporariamente indisponível.',
+            request_id: request.id,
+          });
+        try {
+          const value = await deps.observations.recordManualCapture({
+            observation,
+            provenance: {
+              id: observation.provenanceId,
+              userId: actor.id,
+              sourceType: 'manual',
+              sourceId: observation.sourceId,
+              methodCode: 'capillary_user_reported',
+              transformationRef: null,
+              recordedAt: now,
+              createdAt: now,
+            },
+            idempotencyKey: headers['idempotency-key'],
+            requestHash: createHash('sha256')
+              .update(
+                JSON.stringify({
+                  decimalValue: body.decimal_value,
+                  occurredAt: body.occurred_at,
+                  observedTimezone: body.observed_timezone,
+                  utcOffsetMinutes: body.utc_offset_minutes,
+                }),
+              )
+              .digest('hex'),
+            audit: {
+              id: `aud_${randomUUID().replaceAll('-', '')}`,
+              requestId: request.id,
+              retentionPolicyRef: purpose.retentionPolicyRef,
+              occurredAt: now,
+            },
+          });
+          return reply.code(201).send({
+            id: value.id,
+            type: value.type,
+            decimal_value: value.quantity.decimalValue,
+            unit: value.quantity.unit,
+            occurred_at: value.occurredAt,
+            source_type: 'manual',
+            method: 'capillary_user_reported',
+            request_id: request.id,
+          });
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === 'Idempotency key reused'
+          )
+            return reply.code(409).send({
+              code: 'IDEMPOTENCY_CONFLICT',
+              message: 'A chave de idempotência já foi utilizada.',
+              request_id: request.id,
+            });
+          if (
+            error instanceof Error &&
+            (error.message === 'Invalid observation' ||
+              error.message === 'Invalid manual observation capture')
+          )
+            return reply.code(400).send({
+              code: 'INVALID_OBSERVATION',
+              message: 'Dados de medição inválidos.',
+              request_id: request.id,
+            });
+          throw error;
+        }
       },
     );
     routes.post(
