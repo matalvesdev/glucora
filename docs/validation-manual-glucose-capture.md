@@ -31,6 +31,8 @@ faixa, alerta ou texto livre do cliente.
   conflito de idempotência;
 - `tests/integration/postgres.test.ts`: migration, gravação real, retry,
   conflito e compatibilidade com exclusão canônica.
+- `tests/e2e/shell.spec.ts`: formulário autenticado, payload mínimo e estado de
+  sucesso sem alerta ou interpretação.
 
-Não há interface de captura, timeline, faixas, alertas, conversão, importação
-de dispositivo, diagnóstico, prescrição ou beta neste slice.
+Não há timeline, faixas, alertas, conversão, importação de dispositivo,
+diagnóstico, prescrição ou beta neste slice.

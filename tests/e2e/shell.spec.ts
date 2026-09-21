@@ -60,6 +60,60 @@ test('privacy and support remain closed without an authenticated account', async
   ).toBe(true);
 });
 
+test('authenticated user records an approved manual glucose measurement', async ({
+  page,
+}) => {
+  const payloads: unknown[] = [];
+  await page.route('**/v1/me', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'usr_syntheticconsumer001',
+        kind: 'consumer',
+        status: 'active',
+        locale: 'pt-BR',
+        timezone: 'America/Sao_Paulo',
+        created_at: '2026-01-01T00:00:00.000Z',
+        updated_at: '2026-01-01T00:00:00.000Z',
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    }),
+  );
+  await page.route('**/v1/observations', async (route) => {
+    payloads.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'obs_syntheticcapture0001',
+        type: { system: 'http://loinc.org', code: '2339-0' },
+        decimal_value: '101.25',
+        unit: { system: 'http://unitsofmeasure.org', code: 'mg/dL' },
+        occurred_at: '2026-01-01T13:00:00.000Z',
+        source_type: 'manual',
+        method: 'capillary_user_reported',
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Registrar glicose' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Registrar glicose' }),
+  ).toBeVisible();
+  await page.getByLabel('Medição em mg/dL').fill('101.25');
+  await page.getByLabel('Momento da medição').fill('2026-01-01T10:00');
+  await page.getByRole('button', { name: 'Registrar medição' }).click();
+  await expect(page.getByRole('status')).toContainText('Medição registrada');
+  expect(payloads).toHaveLength(1);
+  expect(payloads[0]).toMatchObject({
+    decimal_value: '101.25',
+    occurred_at: expect.stringMatching(/^2026-01-01T/),
+  });
+  expect(JSON.stringify(payloads[0])).not.toContain('alert');
+});
+
 test('authenticated user can submit minimized privacy and support requests', async ({
   page,
 }) => {
