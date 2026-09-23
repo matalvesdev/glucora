@@ -1370,4 +1370,3 @@ describe('real PostgreSQL migrations and readiness', () => {
     }
   }, 60000);
 });
-
