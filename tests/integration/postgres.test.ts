@@ -154,6 +154,12 @@ describe('real PostgreSQL migrations and readiness', () => {
           resolve('infrastructure/migrations/0024_manual_glucose_capture.sql'),
           join(directory, '0024_manual_glucose_capture.sql'),
         );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0025_manual_glucose_corrections.sql',
+          ),
+          join(directory, '0025_manual_glucose_corrections.sql'),
+        );
         await writeFile(
           join(directory, '0015_failure.sql'),
           'CREATE TABLE must_rollback (id int); SELECT * FROM table_that_does_not_exist;',
