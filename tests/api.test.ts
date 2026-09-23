@@ -875,5 +875,21 @@ describe('foundation HTTP contract and privacy', () => {
       ],
     });
     expect(rebuilt).toBe(true);
+    expect(
+      (
+        await app.inject({
+          url: '/v1/timeline?category_system=http%3A%2F%2Floinc.org',
+          headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (
+        await app.inject({
+          url: '/v1/timeline?occurred_from=2026-01-02T00%3A00%3A00.000Z&occurred_to=2026-01-01T00%3A00%3A00.000Z',
+          headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+        })
+      ).statusCode,
+    ).toBe(400);
   });
 });

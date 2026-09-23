@@ -679,6 +679,44 @@
             "in": "query",
             "name": "source_kind",
             "required": false
+          },
+          {
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "occurred_from",
+            "required": false
+          },
+          {
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "occurred_to",
+            "required": false
+          },
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            },
+            "in": "query",
+            "name": "category_system",
+            "required": false
+          },
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            },
+            "in": "query",
+            "name": "category_code",
+            "required": false
           }
         ],
         "responses": {

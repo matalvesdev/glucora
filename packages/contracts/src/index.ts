@@ -175,6 +175,12 @@ export const TimelineListQuerySchema = Type.Object(
     source_kind: Type.Optional(
       Type.Union([Type.Literal('observation'), Type.Literal('context_event')]),
     ),
+    occurred_from: Type.Optional(IsoTimestampSchema),
+    occurred_to: Type.Optional(IsoTimestampSchema),
+    category_system: Type.Optional(
+      Type.String({ minLength: 1, maxLength: 128 }),
+    ),
+    category_code: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
   },
   { additionalProperties: false },
 );
