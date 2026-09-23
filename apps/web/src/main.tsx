@@ -31,7 +31,7 @@ function App() {
   }
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-7">
+      <header className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-7 sm:flex-row sm:items-center sm:justify-between">
         <a
           href="/"
           aria-label="Glucora, início"
@@ -45,7 +45,7 @@ function App() {
           </span>
           glucora
         </a>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-1 sm:justify-end sm:gap-3">
           <button
             type="button"
             onClick={() => setView(view === 'privacy' ? 'home' : 'privacy')}
