@@ -125,6 +125,18 @@ export const CreateManualGlucoseObservationBodySchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export const CorrectManualGlucoseObservationBodySchema = Type.Object(
+  {
+    expected_version: Type.Integer({ minimum: 1 }),
+    decimal_value: Type.String({
+      pattern: '^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,9})?$',
+    }),
+    occurred_at: IsoTimestampSchema,
+    observed_timezone: Type.String({ minLength: 1, maxLength: 64 }),
+    utc_offset_minutes: Type.Integer({ minimum: -840, maximum: 840 }),
+  },
+  { additionalProperties: false },
+);
 export const ManualGlucoseObservationSchema = Type.Object(
   {
     id: Type.String({ pattern: '^obs_[A-Za-z0-9_-]{16,64}$' }),
@@ -136,6 +148,7 @@ export const ManualGlucoseObservationSchema = Type.Object(
     occurred_at: IsoTimestampSchema,
     source_type: Type.Literal('manual'),
     method: Type.Literal('capillary_user_reported'),
+    version: Type.Integer({ minimum: 1 }),
     request_id: RequestIdSchema,
   },
   { additionalProperties: false },
@@ -158,6 +171,7 @@ export const ManualGlucoseObservationListSchema = Type.Object(
           }),
           occurred_at: IsoTimestampSchema,
           source_type: Type.Literal('manual'),
+          version: Type.Integer({ minimum: 1 }),
         },
         { additionalProperties: false },
       ),

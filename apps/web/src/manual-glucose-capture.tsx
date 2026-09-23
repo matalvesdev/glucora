@@ -29,11 +29,20 @@ export function ManualGlucoseCapture() {
   const [submit, setSubmit] = useState<SubmitState>('idle');
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState<
-    readonly { id: string; decimal_value: string; occurred_at: string }[]
+    readonly {
+      id: string;
+      decimal_value: string;
+      occurred_at: string;
+      version: number;
+    }[]
   >([]);
   const [historyState, setHistoryState] = useState<
     'idle' | 'loading' | 'ready' | 'error'
   >('idle');
+  const [correction, setCorrection] = useState<{
+    id: string;
+    version: number;
+  } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -79,13 +88,60 @@ export function ManualGlucoseCapture() {
       setHistory(
         (
           body as {
-            items: { id: string; decimal_value: string; occurred_at: string }[];
+            items: {
+              id: string;
+              decimal_value: string;
+              occurred_at: string;
+              version: number;
+            }[];
           }
         ).items,
       );
       setHistoryState('ready');
     } catch {
       setHistoryState('error');
+    }
+  }
+
+  async function correct(event: FormEvent) {
+    event.preventDefault();
+    if (!correction) return;
+    const normalized = decimalValue.replace(',', '.');
+    const occurred = observedTime(occurredAt);
+    if (!/^(?:0|[1-9]\d{0,11})(?:\.\d{1,9})?$/.test(normalized) || !occurred)
+      return;
+    setSubmit('loading');
+    try {
+      const response = await fetch(`/v1/observations/${correction.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          expected_version: correction.version,
+          decimal_value: normalized,
+          occurred_at: occurred,
+          observed_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          utc_offset_minutes: -new Date(occurred).getTimezoneOffset(),
+        }),
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(ManualGlucoseObservationSchema, body))
+        throw new Error('invalid');
+      setCorrection(null);
+      setSubmit('success');
+      setMessage(
+        'Medição corrigida; a versão anterior foi preservada no histórico.',
+      );
+      await loadHistory();
+    } catch {
+      setSubmit('error');
+      setMessage(
+        'Não foi possível corrigir agora. Tente novamente em instantes.',
+      );
     }
   }
 
@@ -243,11 +299,69 @@ export function ManualGlucoseCapture() {
                         timeStyle: 'short',
                       }).format(new Date(item.occurred_at))}
                     </p>
+                    <Button
+                      type="button"
+                      className="mt-3"
+                      onClick={() => {
+                        setCorrection(item);
+                        setDecimalValue(item.decimal_value);
+                        setOccurredAt(item.occurred_at.slice(0, 16));
+                      }}
+                    >
+                      Corrigir medição
+                    </Button>
                   </li>
                 ))}
               </ul>
             )}
           </section>
+          {correction ? (
+            <form
+              onSubmit={(event) => void correct(event)}
+              className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm"
+            >
+              <h2 className="text-xl font-semibold">Corrigir medição</h2>
+              <p className="mt-2 text-sm text-stone-600">
+                A correção cria uma nova versão e preserva o registro anterior.
+              </p>
+              <label
+                className="mt-5 block text-sm font-medium"
+                htmlFor="correction-value"
+              >
+                Medição em mg/dL
+              </label>
+              <input
+                id="correction-value"
+                inputMode="decimal"
+                value={decimalValue}
+                onChange={(event) => setDecimalValue(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5"
+                required
+              />
+              <label
+                className="mt-5 block text-sm font-medium"
+                htmlFor="correction-occurred"
+              >
+                Momento da medição
+              </label>
+              <input
+                id="correction-occurred"
+                type="datetime-local"
+                value={occurredAt}
+                onChange={(event) => setOccurredAt(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5"
+                required
+              />
+              <div className="mt-6 flex gap-3">
+                <Button disabled={submit === 'loading'}>
+                  {submit === 'loading' ? 'Corrigindo…' : 'Salvar correção'}
+                </Button>
+                <Button type="button" onClick={() => setCorrection(null)}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          ) : null}
         </div>
       ) : null}
     </main>
