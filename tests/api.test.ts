@@ -14,6 +14,7 @@ import {
   SupportRequestListSchema,
   SupportRequestSchema,
   ManualGlucoseObservationSchema,
+  TimelineListSchema,
 } from '../packages/contracts/src/index';
 import { createDevelopmentIdentityAdapter } from '../services/api/src/modules/identity/identity-adapter';
 import type {
@@ -23,6 +24,7 @@ import type {
   PrivacyRequestRepository,
   SupportRequestRepository,
   ObservationRepository,
+  TimelineRepository,
 } from '../packages/domain/src/index';
 const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
@@ -795,5 +797,83 @@ describe('foundation HTTP contract and privacy', () => {
     });
     expect(response.statusCode).toBe(413);
     expect(Value.Check(ErrorSchema, response.json())).toBe(true);
+  });
+  it('lists only the authorized holder timeline through the projection', async () => {
+    const purpose = {
+      id: 'pur_selfcarehealth0001',
+      purposeKey: 'self_care_health_data',
+      version: 1,
+      status: 'published' as const,
+      title: 'Synthetic health purpose',
+      noticeText: 'Synthetic consent notice.',
+      legalBasisRef: 'synthetic-legal-ref',
+      retentionPolicyRef: 'synthetic-retention-ref',
+      effectiveFrom: '2020-01-01T00:00:00.000Z',
+      retiredAt: null,
+    };
+    let rebuilt = false;
+    const timeline = {
+      rebuild: async () => {
+        rebuilt = true;
+        return 1;
+      },
+      list: async () => [
+        {
+          id: 'tli_synthetictimeline01',
+          userId: syntheticAccount.id,
+          sourceKind: 'observation' as const,
+          sourceId: 'obs_syntheticobservation',
+          sourceVersion: 1,
+          category: { system: 'http://loinc.org', code: '2339-0' },
+          factClass: 'declaration' as const,
+          sourceType: 'manual' as const,
+          occurredAt: '2026-01-01T10:00:00.000Z',
+          observedTimezone: 'America/Sao_Paulo',
+          utcOffsetMinutes: -180,
+          projectedAt: '2026-01-01T10:01:00.000Z',
+        },
+      ],
+    } satisfies TimelineRepository;
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => syntheticAccount },
+      consentPurposes: { listPublished: async () => [purpose] },
+      consents: {
+        record: async () => {
+          throw new Error('not used');
+        },
+        history: async () => [],
+        listHistory: async () => [],
+        current: async () => ({
+          id: 'cne_syntheticgrant00001',
+          userId: syntheticAccount.id,
+          purposeVersionId: purpose.id,
+          decision: 'granted' as const,
+          channel: 'synthetic',
+          idempotencyKey: 'synthetic-grant-key',
+          occurredAt: '2026-01-01T00:00:00.000Z',
+          recordedAt: '2026-01-01T00:00:00.000Z',
+        }),
+      },
+      timeline,
+    });
+    apps.push(app);
+    expect((await app.inject('/v1/timeline')).statusCode).toBe(401);
+    const response = await app.inject({
+      url: '/v1/timeline?limit=20',
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(Value.Check(TimelineListSchema, response.json())).toBe(true);
+    expect(response.json()).toMatchObject({
+      state: 'ready',
+      groups: [
+        {
+          items: [{ id: 'tli_synthetictimeline01', fact_class: 'declaration' }],
+        },
+      ],
+    });
+    expect(rebuilt).toBe(true);
   });
 });

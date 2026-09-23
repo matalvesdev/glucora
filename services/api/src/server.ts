@@ -31,6 +31,7 @@ try {
     consentPurposes: database.consentPurposes,
     consentDecisions: database.consentDecisions,
     observations: database.observations,
+    timeline: database.timeline,
     privacyRequests: database.privacyRequests,
     ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
       ? {

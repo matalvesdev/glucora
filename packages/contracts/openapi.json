@@ -640,6 +640,297 @@
         }
       }
     },
+    "/v1/timeline": {
+      "get": {
+        "operationId": "listOwnTimeline",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{8,512}$",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": ["observation"]
+                },
+                {
+                  "type": "string",
+                  "enum": ["context_event"]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "source_kind",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["state", "groups", "next_cursor", "request_id"],
+                  "properties": {
+                    "state": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["empty"]
+                        },
+                        {
+                          "type": "string",
+                          "enum": ["ready"]
+                        }
+                      ]
+                    },
+                    "groups": {
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": ["local_date", "items"],
+                        "properties": {
+                          "local_date": {
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                            "type": "string"
+                          },
+                          "items": {
+                            "maxItems": 50,
+                            "type": "array",
+                            "items": {
+                              "additionalProperties": false,
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "source_kind",
+                                "source_type",
+                                "fact_class",
+                                "category",
+                                "occurred_at"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^tli_[A-Za-z0-9_-]{16,64}$",
+                                  "type": "string"
+                                },
+                                "source_kind": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": ["observation"]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": ["context_event"]
+                                    }
+                                  ]
+                                },
+                                "source_type": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": ["manual"]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": ["imported"]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": ["derived"]
+                                    }
+                                  ]
+                                },
+                                "fact_class": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": ["fact"]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": ["declaration"]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": ["derivation"]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": ["inference"]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": ["clinical_assertion"]
+                                    }
+                                  ]
+                                },
+                                "category": {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": ["system", "code"],
+                                  "properties": {
+                                    "system": {
+                                      "minLength": 1,
+                                      "maxLength": 128,
+                                      "type": "string"
+                                    },
+                                    "code": {
+                                      "minLength": 1,
+                                      "maxLength": 128,
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "occurred_at": {
+                                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "next_cursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/privacy-requests": {
       "post": {
         "operationId": "createPrivacyRequest",

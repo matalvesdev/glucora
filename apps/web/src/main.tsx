@@ -6,8 +6,11 @@ import { HealthSchema } from '@glucora/contracts';
 import './styles.css';
 import { PrivacyAndSupport } from './privacy-and-support';
 import { ManualGlucoseCapture } from './manual-glucose-capture';
+import { OwnTimeline } from './timeline';
 function App() {
-  const [view, setView] = useState<'home' | 'privacy' | 'capture'>('home');
+  const [view, setView] = useState<'home' | 'privacy' | 'capture' | 'timeline'>(
+    'home',
+  );
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(
     'idle',
   );
@@ -56,6 +59,13 @@ function App() {
             className="rounded-full px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-teal-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-800"
           >
             {view === 'capture' ? 'Início' : 'Registrar glicose'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setView(view === 'timeline' ? 'home' : 'timeline')}
+            className="rounded-full px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-teal-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-800"
+          >
+            {view === 'timeline' ? 'Início' : 'Timeline'}
           </button>
           <span className="hidden rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 sm:inline-flex">
             Em desenvolvimento
@@ -123,8 +133,10 @@ function App() {
         </main>
       ) : view === 'privacy' ? (
         <PrivacyAndSupport />
-      ) : (
+      ) : view === 'capture' ? (
         <ManualGlucoseCapture />
+      ) : (
+        <OwnTimeline />
       )}
       <footer className="mx-auto max-w-6xl border-t border-stone-200 px-6 py-7 text-sm text-stone-500">
         Glucora · Contexto para participar do seu cuidado.
