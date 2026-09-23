@@ -105,6 +105,7 @@ test('authenticated user records an approved manual glucose measurement', async 
         occurred_at: '2026-01-01T13:00:00.000Z',
         source_type: 'manual',
         method: 'capillary_user_reported',
+        version: 1,
         request_id: '123e4567-e89b-42d3-a456-426614174000',
       }),
     });

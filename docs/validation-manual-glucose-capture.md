@@ -10,6 +10,10 @@ titular: LOINC `2339-0`, unidade `mg/dL` e método
 para o próprio titular. O contrato não aceita tipo, unidade, contexto, faixa,
 alerta ou texto livre do cliente.
 
+`PUT /v1/observations/:id` corrige exclusivamente uma medição manual corrente
+do próprio titular, exige `expected_version` e idempotência, e preserva a
+versão anterior como `superseded`.
+
 ## Controles verificados
 
 - autenticação, conta ativa, ownership e consentimento vigente para a
@@ -22,6 +26,8 @@ alerta ou texto livre do cliente.
   código/unidade aprovado antes da apresentação;
 - idempotência, provenance, observação e auditoria são persistidas em uma
   transação; reutilização da chave com conteúdo diferente retorna conflito;
+- correção concorrente ou com versão desatualizada retorna conflito sem mudar
+  o registro; retry idêntico retorna a versão já criada;
 - logs e métricas não recebem valor, payload, URL, token ou cabeçalhos de saúde;
 - exclusão canônica remove a evidência de idempotência antes de remover a
   observação, preservando a política de exclusão da ADR-043.

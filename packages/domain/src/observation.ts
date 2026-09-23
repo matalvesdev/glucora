@@ -58,6 +58,9 @@ export interface ObservationRepository {
     userId: string,
   ): Promise<QuantitativeObservation | null>;
   correct(input: ObservationCorrection): Promise<QuantitativeObservation>;
+  correctManualCapture(
+    input: ManualObservationCorrection,
+  ): Promise<QuantitativeObservation>;
   listCurrent(
     userId: string,
     query: ObservationListQuery,
@@ -110,6 +113,11 @@ export interface ObservationCorrection {
     readonly retentionPolicyRef: string;
     readonly occurredAt: string;
   };
+}
+
+export interface ManualObservationCorrection extends ObservationCorrection {
+  readonly idempotencyKey: string;
+  readonly requestHash: string;
 }
 
 export type ObservationValidationError =

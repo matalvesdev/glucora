@@ -615,10 +615,14 @@ describe('foundation HTTP contract and privacy', () => {
       recordInitial: async () => {
         throw new Error('not used');
       },
-      findCurrent: async () => null,
+      findCurrent: async (id, userId) =>
+        captures
+          .map((item) => item.observation)
+          .find((item) => item.id === id && item.userId === userId) ?? null,
       correct: async () => {
         throw new Error('not used');
       },
+      correctManualCapture: async (input) => input.replacement,
       listCurrent: async (_userId, query) =>
         captures
           .map((item) => item.observation)
@@ -715,6 +719,20 @@ describe('foundation HTTP contract and privacy', () => {
           source_type: 'manual',
         },
       ],
+    });
+    const correction = await app.inject({
+      method: 'PUT',
+      url: `/v1/observations/${response.json<{ id: string }>().id}`,
+      headers: {
+        ...headers,
+        'idempotency-key': 'test-correction-key',
+      },
+      payload: { ...input, decimal_value: '103', expected_version: 1 },
+    });
+    expect(correction.statusCode).toBe(200);
+    expect(correction.json()).toMatchObject({
+      decimal_value: '103',
+      version: 2,
     });
     expect(
       (

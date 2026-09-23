@@ -3,6 +3,7 @@ import {
   validateQuantitativeObservation,
   validateProvenanceRecord,
   type ManualObservationCapture,
+  type ManualObservationCorrection,
   type ObservationRepository,
   type ProvenanceRecord,
   type QuantitativeObservation,
@@ -199,11 +200,132 @@ async function recordManualCapture(
   }
 }
 
+async function correctManualCapture(
+  pool: Pool,
+  input: ManualObservationCorrection,
+): Promise<QuantitativeObservation> {
+  const { replacement, provenance, audit } = input;
+  const valid = validateQuantitativeObservation(replacement);
+  const provenanceValid = validateProvenanceRecord(provenance);
+  if (!valid.ok || !provenanceValid.ok || replacement.status !== 'current')
+    throw new Error('Invalid replacement observation');
+  if (
+    replacement.sourceType !== 'manual' ||
+    provenance.methodCode !== 'capillary_user_reported' ||
+    provenance.id !== replacement.provenanceId ||
+    provenance.userId !== replacement.userId ||
+    provenance.sourceId !== replacement.sourceId ||
+    provenance.recordedAt !== replacement.recordedAt ||
+    audit.occurredAt !== replacement.createdAt
+  )
+    throw new Error('Invalid manual observation correction');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      `${replacement.userId}:${input.idempotencyKey}`,
+    ]);
+    const prior = await client.query<{
+      request_hash: string;
+      observation_id: string;
+      observation_version: number;
+    }>(
+      `SELECT request_hash, observation_id, observation_version FROM health.manual_observation_corrections WHERE user_id=$1 AND idempotency_key=$2 FOR UPDATE`,
+      [replacement.userId, input.idempotencyKey],
+    );
+    if (prior.rowCount) {
+      const evidence = prior.rows[0]!;
+      if (evidence.request_hash !== input.requestHash)
+        throw new Error('Idempotency key reused');
+      const result = await client.query<ObservationRow>(
+        `SELECT ${columns} FROM health.observations WHERE id=$1 AND version=$2 AND user_id=$3`,
+        [
+          evidence.observation_id,
+          evidence.observation_version,
+          replacement.userId,
+        ],
+      );
+      if (!result.rows[0]) throw new Error('Manual correction record missing');
+      await client.query('COMMIT');
+      return map(result.rows[0]);
+    }
+    const current = await client.query<ObservationRow>(
+      `SELECT ${columns} FROM health.observations WHERE id=$1 AND user_id=$2 AND status='current' FOR UPDATE`,
+      [replacement.id, replacement.userId],
+    );
+    const previous = current.rows[0];
+    if (!previous || replacement.version !== previous.version + 1)
+      throw new Error('Observation correction conflict');
+    await client.query(
+      `UPDATE health.observations SET status='superseded', superseded_at=$3 WHERE id=$1 AND version=$2`,
+      [replacement.id, previous.version, replacement.createdAt],
+    );
+    await insertProvenance(client, provenance);
+    const result = await client.query<ObservationRow>(
+      `INSERT INTO health.observations (id,version,user_id,type_system,type_code,decimal_value,unit_system,unit_code,occurred_at,observed_timezone,utc_offset_minutes,recorded_at,ingested_at,source_type,source_id,provenance_id,fact_class,status,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING ${columns}`,
+      [
+        replacement.id,
+        replacement.version,
+        replacement.userId,
+        replacement.type.system,
+        replacement.type.code,
+        replacement.quantity.decimalValue,
+        replacement.quantity.unit.system,
+        replacement.quantity.unit.code,
+        replacement.occurredAt,
+        replacement.observedTimezone,
+        replacement.utcOffsetMinutes,
+        replacement.recordedAt,
+        replacement.ingestedAt,
+        replacement.sourceType,
+        replacement.sourceId,
+        replacement.provenanceId,
+        replacement.factClass,
+        replacement.status,
+        replacement.createdAt,
+      ],
+    );
+    await insertAuditEvent(client, {
+      id: audit.id,
+      eventKey: 'observation.manual_corrected',
+      actorType: 'consumer',
+      actorId: replacement.userId,
+      subjectId: replacement.userId,
+      resourceType: 'observation',
+      resourceId: replacement.id,
+      action: 'corrected',
+      outcome: 'succeeded',
+      requestId: audit.requestId,
+      retentionPolicyRef: audit.retentionPolicyRef,
+      occurredAt: audit.occurredAt,
+    });
+    await client.query(
+      `INSERT INTO health.manual_observation_corrections (user_id,idempotency_key,request_hash,observation_id,observation_version,created_at) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [
+        replacement.userId,
+        input.idempotencyKey,
+        input.requestHash,
+        replacement.id,
+        replacement.version,
+        replacement.createdAt,
+      ],
+    );
+    await client.query('COMMIT');
+    return map(result.rows[0]!);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export function createPostgresObservationRepository(
   pool: Pool,
 ): ObservationRepository {
   return {
     recordManualCapture: (input) => recordManualCapture(pool, input),
+    correctManualCapture: (input) => correctManualCapture(pool, input),
     async recordInitial(observation, provenance) {
       const validation = validateQuantitativeObservation(observation);
       const provenanceValidation = validateProvenanceRecord(provenance);
