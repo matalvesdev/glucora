@@ -16,6 +16,8 @@ import {
   IdempotencyHeadersSchema,
   MeSchema,
   ManualGlucoseObservationSchema,
+  ManualGlucoseObservationListQuerySchema,
+  ManualGlucoseObservationListSchema,
   ListSupportRequestsQuerySchema,
   PrivacyRequestParamsSchema,
   PrivacyRequestListQuerySchema,
@@ -152,6 +154,39 @@ function decodeSupportRequestCursor(value: string | undefined) {
     )
       return null;
     return { createdAt: parsed.createdAt, requestId: parsed.requestId };
+  } catch {
+    return null;
+  }
+}
+
+function encodeObservationCursor(item: {
+  readonly occurredAt: string;
+  readonly id: string;
+}): string {
+  return Buffer.from(
+    JSON.stringify({ occurredAt: item.occurredAt, observationId: item.id }),
+  ).toString('base64url');
+}
+
+function decodeObservationCursor(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(
+      Buffer.from(value, 'base64url').toString('utf8'),
+    );
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Object.keys(parsed).length !== 2 ||
+      !('occurredAt' in parsed) ||
+      typeof parsed.occurredAt !== 'string' ||
+      !Number.isFinite(Date.parse(parsed.occurredAt)) ||
+      !('observationId' in parsed) ||
+      typeof parsed.observationId !== 'string' ||
+      !/^obs_[A-Za-z0-9_-]{16,64}$/.test(parsed.observationId)
+    )
+      return null;
+    return { occurredAt: parsed.occurredAt, id: parsed.observationId };
   } catch {
     return null;
   }
@@ -446,6 +481,87 @@ export function buildApp(deps: AppDependencies) {
             });
           throw error;
         }
+      },
+    );
+    routes.get(
+      '/v1/observations',
+      {
+        schema: {
+          operationId: 'listManualGlucoseObservations',
+          querystring: ManualGlucoseObservationListQuerySchema,
+          response: {
+            200: ManualGlucoseObservationListSchema,
+            400: ErrorSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        const evaluatedAt = new Date().toISOString();
+        const purpose = (
+          await deps.consentPurposes?.listPublished(evaluatedAt)
+        )?.find((item) => item.purposeKey === 'self_care_health_data');
+        const currentConsent = purpose
+          ? await deps.consents?.current(actor.id, purpose.id)
+          : null;
+        if (
+          !authorizeConsumerCapability({
+            actor,
+            account: account ?? null,
+            subjectUserId: actor.id,
+            purpose: purpose ?? null,
+            currentConsent: currentConsent ?? null,
+            evaluatedAt,
+          }).allowed
+        )
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.observations)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Histórico temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const query = request.query as { limit?: number; cursor?: string };
+        const before = decodeObservationCursor(query.cursor);
+        if (before === null)
+          return reply.code(400).send({
+            code: 'INVALID_CURSOR',
+            message: 'Cursor inválido.',
+            request_id: request.id,
+          });
+        const limit = query.limit ?? 20;
+        const values = await deps.observations.listCurrent(actor.id, {
+          limit: limit + 1,
+          type: approvedManualGlucoseType,
+          unit: approvedManualGlucoseUnit,
+          ...(before ? { before } : {}),
+        });
+        const items = values.slice(0, limit);
+        const next = values.length > limit ? items.at(-1) : undefined;
+        return {
+          items: items.map((item) => ({
+            id: item.id,
+            decimal_value: item.quantity.decimalValue,
+            occurred_at: item.occurredAt,
+            source_type: 'manual' as const,
+          })),
+          next_cursor: next ? encodeObservationCursor(next) : null,
+          request_id: request.id,
+        };
       },
     );
     routes.post(

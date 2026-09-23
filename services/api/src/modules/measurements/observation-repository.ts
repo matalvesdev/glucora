@@ -279,13 +279,27 @@ export function createPostgresObservationRepository(
         throw new Error('Invalid observation page limit');
       const values: unknown[] = [userId, query.limit];
       let cursor = '';
+      let catalog = '';
+      if ((query.type === undefined) !== (query.unit === undefined))
+        throw new Error('Invalid observation catalog filter');
+      if (query.type && query.unit) {
+        values.push(
+          query.type.system,
+          query.type.code,
+          query.unit.system,
+          query.unit.code,
+        );
+        catalog =
+          'AND type_system=$3 AND type_code=$4 AND unit_system=$5 AND unit_code=$6';
+      }
       if (query.before) {
         values.push(query.before.occurredAt, query.before.id);
-        cursor = 'AND (occurred_at, id) < ($3::timestamptz, $4::text)';
+        const offset = query.type ? 7 : 3;
+        cursor = `AND (occurred_at, id) < ($${offset}::timestamptz, $${offset + 1}::text)`;
       }
       const result = await pool.query<ObservationRow>(
         `SELECT ${columns} FROM health.observations
-         WHERE user_id = $1 AND status = 'current' ${cursor}
+         WHERE user_id = $1 AND status = 'current' ${catalog} ${cursor}
          ORDER BY occurred_at DESC, id DESC LIMIT $2`,
         values,
       );

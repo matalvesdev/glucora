@@ -140,6 +140,34 @@ export const ManualGlucoseObservationSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export const ManualGlucoseObservationListQuerySchema = Type.Object(
+  {
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+    cursor: Type.Optional(Type.String({ pattern: '^[A-Za-z0-9_-]{8,512}$' })),
+  },
+  { additionalProperties: false },
+);
+export const ManualGlucoseObservationListSchema = Type.Object(
+  {
+    items: Type.Array(
+      Type.Object(
+        {
+          id: Type.String({ pattern: '^obs_[A-Za-z0-9_-]{16,64}$' }),
+          decimal_value: Type.String({
+            pattern: '^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,9})?$',
+          }),
+          occurred_at: IsoTimestampSchema,
+          source_type: Type.Literal('manual'),
+        },
+        { additionalProperties: false },
+      ),
+      { maxItems: 50 },
+    ),
+    next_cursor: Type.Union([Type.String(), Type.Null()]),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
 export const PrivacyRequestParamsSchema = Type.Object(
   { id: Type.String({ pattern: '^dsr_[A-Za-z0-9_-]{16,64}$' }) },
   { additionalProperties: false },
