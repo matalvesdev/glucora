@@ -168,6 +168,58 @@ export const ManualGlucoseObservationListSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export const TimelineListQuerySchema = Type.Object(
+  {
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+    cursor: Type.Optional(Type.String({ pattern: '^[A-Za-z0-9_-]{8,512}$' })),
+    source_kind: Type.Optional(
+      Type.Union([Type.Literal('observation'), Type.Literal('context_event')]),
+    ),
+  },
+  { additionalProperties: false },
+);
+const TimelineItemSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^tli_[A-Za-z0-9_-]{16,64}$' }),
+    source_kind: Type.Union([
+      Type.Literal('observation'),
+      Type.Literal('context_event'),
+    ]),
+    source_type: Type.Union([
+      Type.Literal('manual'),
+      Type.Literal('imported'),
+      Type.Literal('derived'),
+    ]),
+    fact_class: Type.Union([
+      Type.Literal('fact'),
+      Type.Literal('declaration'),
+      Type.Literal('derivation'),
+      Type.Literal('inference'),
+      Type.Literal('clinical_assertion'),
+    ]),
+    category: CodingSchema,
+    occurred_at: IsoTimestampSchema,
+  },
+  { additionalProperties: false },
+);
+export const TimelineListSchema = Type.Object(
+  {
+    state: Type.Union([Type.Literal('empty'), Type.Literal('ready')]),
+    groups: Type.Array(
+      Type.Object(
+        {
+          local_date: Type.String({ pattern: '^\\d{4}-\\d{2}-\\d{2}$' }),
+          items: Type.Array(TimelineItemSchema, { maxItems: 50 }),
+        },
+        { additionalProperties: false },
+      ),
+      { maxItems: 50 },
+    ),
+    next_cursor: Type.Union([Type.String(), Type.Null()]),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
 export const PrivacyRequestParamsSchema = Type.Object(
   { id: Type.String({ pattern: '^dsr_[A-Za-z0-9_-]{16,64}$' }) },
   { additionalProperties: false },

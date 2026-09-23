@@ -18,3 +18,8 @@ ADR-052 foi aceita por Mateus Alves Bassane em 2026-09-21, com evidência
 titular e ausência de faixas ou alertas. Ela habilita apenas a captura
 autenticada e idempotente condicionada ao consentimento; interface, timeline e
 beta continuam em seus próprios gates.
+
+ADR-053 foi aceita por Mateus Alves Bassane em 2026-09-23, com evidência
+`00001`, para a leitura paginada da timeline do próprio titular, condicionada
+a finalidade publicada e consentimento vigente. Ela não aprova categorias
+clínicas adicionais, compartilhamento, exportação, alertas ou beta.

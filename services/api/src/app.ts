@@ -18,6 +18,8 @@ import {
   ManualGlucoseObservationSchema,
   ManualGlucoseObservationListQuerySchema,
   ManualGlucoseObservationListSchema,
+  TimelineListQuerySchema,
+  TimelineListSchema,
   ListSupportRequestsQuerySchema,
   PrivacyRequestParamsSchema,
   PrivacyRequestListQuerySchema,
@@ -33,6 +35,7 @@ import type {
   ConsentPurposeRepository,
   ConsentRepository,
   ObservationRepository,
+  TimelineRepository,
   IdentityPort,
   PrivacyRequestRepository,
   PrivacyRequest,
@@ -65,6 +68,7 @@ export interface AppDependencies {
   supportRequests?: SupportRequestRepository;
   supportRequestPolicy?: { readonly retentionPolicyRef: string };
   observations?: ObservationRepository;
+  timeline?: TimelineRepository;
   logger?: ReturnType<typeof createLogger>;
   metrics?: MetricSink;
 }
@@ -187,6 +191,39 @@ function decodeObservationCursor(value: string | undefined) {
     )
       return null;
     return { occurredAt: parsed.occurredAt, id: parsed.observationId };
+  } catch {
+    return null;
+  }
+}
+
+function encodeTimelineCursor(item: {
+  readonly occurredAt: string;
+  readonly id: string;
+}): string {
+  return Buffer.from(
+    JSON.stringify({ occurredAt: item.occurredAt, timelineItemId: item.id }),
+  ).toString('base64url');
+}
+
+function decodeTimelineCursor(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(
+      Buffer.from(value, 'base64url').toString('utf8'),
+    );
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Object.keys(parsed).length !== 2 ||
+      !('occurredAt' in parsed) ||
+      typeof parsed.occurredAt !== 'string' ||
+      !Number.isFinite(Date.parse(parsed.occurredAt)) ||
+      !('timelineItemId' in parsed) ||
+      typeof parsed.timelineItemId !== 'string' ||
+      !/^tli_[A-Za-z0-9_-]{16,64}$/.test(parsed.timelineItemId)
+    )
+      return null;
+    return { occurredAt: parsed.occurredAt, id: parsed.timelineItemId };
   } catch {
     return null;
   }
@@ -481,6 +518,109 @@ export function buildApp(deps: AppDependencies) {
             });
           throw error;
         }
+      },
+    );
+    routes.get(
+      '/v1/timeline',
+      {
+        schema: {
+          operationId: 'listOwnTimeline',
+          querystring: TimelineListQuerySchema,
+          response: {
+            200: TimelineListSchema,
+            400: ErrorSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        const evaluatedAt = new Date().toISOString();
+        const purpose = (
+          await deps.consentPurposes?.listPublished(evaluatedAt)
+        )?.find((item) => item.purposeKey === 'self_care_health_data');
+        const currentConsent = purpose
+          ? await deps.consents?.current(actor.id, purpose.id)
+          : null;
+        if (
+          !authorizeConsumerCapability({
+            actor,
+            account: account ?? null,
+            subjectUserId: actor.id,
+            purpose: purpose ?? null,
+            currentConsent: currentConsent ?? null,
+            evaluatedAt,
+          }).allowed
+        )
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.timeline)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Timeline temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const query = request.query as {
+          limit?: number;
+          cursor?: string;
+          source_kind?: 'observation' | 'context_event';
+        };
+        const before = decodeTimelineCursor(query.cursor);
+        if (before === null)
+          return reply.code(400).send({
+            code: 'INVALID_CURSOR',
+            message: 'Cursor inválido.',
+            request_id: request.id,
+          });
+        const limit = query.limit ?? 20;
+        await deps.timeline.rebuild(actor.id, evaluatedAt);
+        const values = await deps.timeline.list(actor.id, {
+          limit: limit + 1,
+          ...(query.source_kind ? { sourceKind: query.source_kind } : {}),
+          ...(before ? { before } : {}),
+        });
+        const items = values.slice(0, limit);
+        const groups = new Map<string, typeof items>();
+        for (const item of items) {
+          const localDate = new Intl.DateTimeFormat('en-CA', {
+            timeZone: item.observedTimezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(new Date(item.occurredAt));
+          groups.set(localDate, [...(groups.get(localDate) ?? []), item]);
+        }
+        return {
+          state: items.length === 0 ? ('empty' as const) : ('ready' as const),
+          groups: [...groups].map(([localDate, grouped]) => ({
+            local_date: localDate,
+            items: grouped.map((item) => ({
+              id: item.id,
+              source_kind: item.sourceKind,
+              source_type: item.sourceType,
+              fact_class: item.factClass,
+              category: item.category,
+              occurred_at: item.occurredAt,
+            })),
+          })),
+          next_cursor:
+            values.length > limit && items.at(-1)
+              ? encodeTimelineCursor(items.at(-1)!)
+              : null,
+          request_id: request.id,
+        };
       },
     );
     routes.get(
