@@ -110,9 +110,10 @@ describe('foundation HTTP contract and privacy', () => {
     expect(text).not.toContain('synthetic-token');
     expect(text).not.toContain('synthetic-health-value');
   });
-  it('does not expose unimplemented health data capabilities', async () => {
+  it('keeps health history closed without authentication and other capabilities absent', async () => {
     const { app } = setup();
-    for (const url of ['/v1/observations', '/v1/consents', '/v1/chat'])
+    expect((await app.inject('/v1/observations')).statusCode).toBe(401);
+    for (const url of ['/v1/consents', '/v1/chat'])
       expect((await app.inject(url)).statusCode).toBe(404);
   });
   it('denies identity by default and accepts only a valid local synthetic actor', async () => {
@@ -616,7 +617,16 @@ describe('foundation HTTP contract and privacy', () => {
       correct: async () => {
         throw new Error('not used');
       },
-      listCurrent: async () => [],
+      listCurrent: async (_userId, query) =>
+        captures
+          .map((item) => item.observation)
+          .filter(
+            (item) =>
+              item.type.system === query.type?.system &&
+              item.type.code === query.type?.code &&
+              item.quantity.unit.system === query.unit?.system &&
+              item.quantity.unit.code === query.unit?.code,
+          ),
     } satisfies ObservationRepository;
     const purpose = {
       id: 'pur_selfcarehealth0001',
@@ -687,6 +697,23 @@ describe('foundation HTTP contract and privacy', () => {
     expect(captures[0]!.audit.retentionPolicyRef).toBe(
       'synthetic-retention-ref',
     );
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/v1/observations?limit=20',
+          headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+        })
+      ).json(),
+    ).toMatchObject({
+      items: [
+        {
+          id: response.json<{ id: string }>().id,
+          decimal_value: '101.25',
+          source_type: 'manual',
+        },
+      ],
+    });
     expect(
       (
         await app.inject({

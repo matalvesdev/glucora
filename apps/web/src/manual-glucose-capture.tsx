@@ -1,6 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Value } from '@sinclair/typebox/value';
-import { ManualGlucoseObservationSchema, MeSchema } from '@glucora/contracts';
+import {
+  ManualGlucoseObservationListSchema,
+  ManualGlucoseObservationSchema,
+  MeSchema,
+} from '@glucora/contracts';
 import { Button } from '@glucora/ui';
 
 type AccessState = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
@@ -24,6 +28,12 @@ export function ManualGlucoseCapture() {
   const [occurredAt, setOccurredAt] = useState(currentLocalInput);
   const [submit, setSubmit] = useState<SubmitState>('idle');
   const [message, setMessage] = useState('');
+  const [history, setHistory] = useState<
+    readonly { id: string; decimal_value: string; occurred_at: string }[]
+  >([]);
+  const [historyState, setHistoryState] = useState<
+    'idle' | 'loading' | 'ready' | 'error'
+  >('idle');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -50,6 +60,38 @@ export function ManualGlucoseCapture() {
       });
     return () => controller.abort();
   }, []);
+
+  async function loadHistory() {
+    setHistoryState('loading');
+    try {
+      const response = await fetch('/v1/observations?limit=20', {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const body: unknown = await response.json();
+      if (
+        !response.ok ||
+        !Value.Check(ManualGlucoseObservationListSchema, body)
+      ) {
+        setHistoryState('error');
+        return;
+      }
+      setHistory(
+        (
+          body as {
+            items: { id: string; decimal_value: string; occurred_at: string }[];
+          }
+        ).items,
+      );
+      setHistoryState('ready');
+    } catch {
+      setHistoryState('error');
+    }
+  }
+
+  useEffect(() => {
+    if (access === 'authenticated') void loadHistory();
+  }, [access]);
 
   async function record(event: FormEvent) {
     event.preventDefault();
@@ -89,6 +131,7 @@ export function ManualGlucoseCapture() {
       setSubmit('success');
       setDecimalValue('');
       setMessage('Medição registrada sem interpretação ou alerta.');
+      await loadHistory();
     } catch {
       setSubmit('error');
       setMessage(
@@ -124,50 +167,88 @@ export function ManualGlucoseCapture() {
                 'A medição será vinculada somente à sua conta e ao seu consentimento vigente.'}
       </div>
       {access === 'authenticated' ? (
-        <form
-          onSubmit={(event) => void record(event)}
-          className="mt-8 rounded-3xl border border-stone-200 bg-white p-7 shadow-sm"
-        >
-          <label htmlFor="glucose-value" className="block text-sm font-medium">
-            Medição em mg/dL
-          </label>
-          <input
-            id="glucose-value"
-            name="glucose-value"
-            inputMode="decimal"
-            autoComplete="off"
-            value={decimalValue}
-            onChange={(event) => setDecimalValue(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-base"
-            aria-describedby="glucose-value-help"
-            required
-          />
-          <p id="glucose-value-help" className="mt-2 text-sm text-stone-600">
-            Use apenas o valor exibido pelo seu medidor. Não há conversão de
-            unidade.
-          </p>
-          <label
-            htmlFor="glucose-occurred-at"
-            className="mt-6 block text-sm font-medium"
+        <div className="mt-8 space-y-8">
+          <form
+            onSubmit={(event) => void record(event)}
+            className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm"
           >
-            Momento da medição
-          </label>
-          <input
-            id="glucose-occurred-at"
-            type="datetime-local"
-            value={occurredAt}
-            onChange={(event) => setOccurredAt(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5"
-            required
-          />
-          <p className="mt-2 text-sm text-stone-600">
-            A origem será registrada como medição capilar manual declarada por
-            você.
-          </p>
-          <Button className="mt-6" disabled={submit === 'loading'}>
-            {submit === 'loading' ? 'Registrando…' : 'Registrar medição'}
-          </Button>
-        </form>
+            <label
+              htmlFor="glucose-value"
+              className="block text-sm font-medium"
+            >
+              Medição em mg/dL
+            </label>
+            <input
+              id="glucose-value"
+              name="glucose-value"
+              inputMode="decimal"
+              autoComplete="off"
+              value={decimalValue}
+              onChange={(event) => setDecimalValue(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-base"
+              aria-describedby="glucose-value-help"
+              required
+            />
+            <p id="glucose-value-help" className="mt-2 text-sm text-stone-600">
+              Use apenas o valor exibido pelo seu medidor. Não há conversão de
+              unidade.
+            </p>
+            <label
+              htmlFor="glucose-occurred-at"
+              className="mt-6 block text-sm font-medium"
+            >
+              Momento da medição
+            </label>
+            <input
+              id="glucose-occurred-at"
+              type="datetime-local"
+              value={occurredAt}
+              onChange={(event) => setOccurredAt(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5"
+              required
+            />
+            <p className="mt-2 text-sm text-stone-600">
+              A origem será registrada como medição capilar manual declarada por
+              você.
+            </p>
+            <Button className="mt-6" disabled={submit === 'loading'}>
+              {submit === 'loading' ? 'Registrando…' : 'Registrar medição'}
+            </Button>
+          </form>
+          <section className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm">
+            <h2 className="text-xl font-semibold">Medições registradas</h2>
+            {historyState === 'loading' && history.length === 0 ? (
+              <p className="mt-4 text-sm text-stone-600">
+                Carregando medições…
+              </p>
+            ) : historyState === 'error' ? (
+              <p className="mt-4 text-sm text-stone-600">
+                Não foi possível carregar suas medições agora.
+              </p>
+            ) : history.length === 0 ? (
+              <p className="mt-4 text-sm text-stone-600">
+                Nenhuma medição registrada ainda.
+              </p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {history.map((item) => (
+                  <li
+                    key={item.id}
+                    className="rounded-2xl border border-stone-200 p-4"
+                  >
+                    <p className="font-semibold">{item.decimal_value} mg/dL</p>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {new Intl.DateTimeFormat('pt-BR', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }).format(new Date(item.occurred_at))}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       ) : null}
     </main>
   );

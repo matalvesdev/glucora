@@ -79,6 +79,8 @@ export interface ManualObservationCapture {
 
 export interface ObservationListQuery {
   readonly limit: number;
+  readonly type?: Coding;
+  readonly unit?: Coding;
   readonly before?: { readonly occurredAt: string; readonly id: string };
 }
 

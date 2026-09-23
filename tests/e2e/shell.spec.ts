@@ -81,6 +81,18 @@ test('authenticated user records an approved manual glucose measurement', async 
     }),
   );
   await page.route('**/v1/observations', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [],
+          next_cursor: null,
+          request_id: '123e4567-e89b-42d3-a456-426614174000',
+        }),
+      });
+      return;
+    }
     payloads.push(route.request().postDataJSON());
     await route.fulfill({
       status: 201,

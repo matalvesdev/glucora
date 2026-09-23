@@ -6,8 +6,9 @@ Referências: ADR-017, ADR-018, ADR-020, ADR-042 e ADR-052.
 
 `POST /v1/observations` aceita somente uma medição manual de glicose do
 titular: LOINC `2339-0`, unidade `mg/dL` e método
-`capillary_user_reported`. O contrato não aceita tipo, unidade, contexto,
-faixa, alerta ou texto livre do cliente.
+`capillary_user_reported`. `GET /v1/observations` lista somente esse catálogo
+para o próprio titular. O contrato não aceita tipo, unidade, contexto, faixa,
+alerta ou texto livre do cliente.
 
 ## Controles verificados
 
@@ -17,6 +18,8 @@ faixa, alerta ou texto livre do cliente.
 - provenance preserva inserção manual e método capilar declarado, sem inferir
   jejum, refeição, exercício, medicação, sintomas ou interpretação clínica;
 - catálogo é deny-by-default e não converte unidade;
+- a consulta usa ownership, consentimento e cursor opaco, filtrando o par de
+  código/unidade aprovado antes da apresentação;
 - idempotência, provenance, observação e auditoria são persistidas em uma
   transação; reutilização da chave com conteúdo diferente retorna conflito;
 - logs e métricas não recebem valor, payload, URL, token ou cabeçalhos de saúde;
