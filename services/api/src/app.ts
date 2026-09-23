@@ -50,6 +50,7 @@ import {
   approvedManualGlucoseUnit,
   authorizeConsumerCapability,
   evaluateObservationCatalog,
+  validateTimelineListQuery,
 } from '@glucora/domain';
 import {
   createLogger,
@@ -576,6 +577,10 @@ export function buildApp(deps: AppDependencies) {
           limit?: number;
           cursor?: string;
           source_kind?: 'observation' | 'context_event';
+          occurred_from?: string;
+          occurred_to?: string;
+          category_system?: string;
+          category_code?: string;
         };
         const before = decodeTimelineCursor(query.cursor);
         if (before === null)
@@ -584,13 +589,39 @@ export function buildApp(deps: AppDependencies) {
             message: 'Cursor inválido.',
             request_id: request.id,
           });
+        if (
+          (query.category_system === undefined) !==
+          (query.category_code === undefined)
+        )
+          return reply.code(400).send({
+            code: 'INVALID_REQUEST',
+            message: 'Solicitação inválida.',
+            request_id: request.id,
+          });
         const limit = query.limit ?? 20;
-        await deps.timeline.rebuild(actor.id, evaluatedAt);
-        const values = await deps.timeline.list(actor.id, {
+        const timelineQuery = {
           limit: limit + 1,
           ...(query.source_kind ? { sourceKind: query.source_kind } : {}),
+          ...(query.occurred_from ? { occurredFrom: query.occurred_from } : {}),
+          ...(query.occurred_to ? { occurredTo: query.occurred_to } : {}),
+          ...(query.category_system && query.category_code
+            ? {
+                category: {
+                  system: query.category_system,
+                  code: query.category_code,
+                },
+              }
+            : {}),
           ...(before ? { before } : {}),
-        });
+        };
+        if (!validateTimelineListQuery(timelineQuery).ok)
+          return reply.code(400).send({
+            code: 'INVALID_REQUEST',
+            message: 'Solicitação inválida.',
+            request_id: request.id,
+          });
+        await deps.timeline.rebuild(actor.id, evaluatedAt);
+        const values = await deps.timeline.list(actor.id, timelineQuery);
         const items = values.slice(0, limit);
         const groups = new Map<string, typeof items>();
         for (const item of items) {
