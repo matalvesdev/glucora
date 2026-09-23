@@ -39,7 +39,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(24);
+        ).toBe(25);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -1370,3 +1370,4 @@ describe('real PostgreSQL migrations and readiness', () => {
     }
   }, 60000);
 });
+
