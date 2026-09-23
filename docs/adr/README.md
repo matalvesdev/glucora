@@ -23,3 +23,7 @@ ADR-053 foi aceita por Mateus Alves Bassane em 2026-09-23, com evidência
 `00001`, para a leitura paginada da timeline do próprio titular, condicionada
 a finalidade publicada e consentimento vigente. Ela não aprova categorias
 clínicas adicionais, compartilhamento, exportação, alertas ou beta.
+
+ADR-054 foi aceita por Mateus Alves Bassane em 2026-09-23, com evidência
+`00001`, para a correção idempotente e versionada de medição manual de glicose
+pelo próprio titular.
