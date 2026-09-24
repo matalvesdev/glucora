@@ -26,7 +26,7 @@ while [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != "
 done
 
 adb shell input keyevent 82
-adb install --replace "$apk_path"
+adb install -r "$apk_path"
 
 resolved_activity="$(adb shell cmd package resolve-activity --brief "$package_name" | tr -d '\r')"
 if [[ "$resolved_activity" != "$package_name/"* ]]; then
