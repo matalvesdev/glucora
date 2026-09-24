@@ -10,7 +10,10 @@ if [[ -z "$apk_path" || ! -f "$apk_path" ]]; then
   exit 2
 fi
 
-adb wait-for-device
+if ! timeout 120 adb wait-for-device; then
+  echo "Android emulator did not expose an ADB device within 120s." >&2
+  exit 1
+fi
 
 boot_deadline=$((SECONDS + boot_timeout_seconds))
 while [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != "1" ]]; do

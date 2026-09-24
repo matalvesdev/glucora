@@ -108,8 +108,11 @@ jobs:
       - name: Create and start Android emulator
         shell: bash
         run: |
+          if [[ -e /dev/kvm ]]; then
+            sudo chmod 666 /dev/kvm
+          fi
           echo 'no' | avdmanager create avd --force --name glucora-smoke --package 'system-images;android-35;google_apis;x86_64'
-          "$ANDROID_HOME/emulator/emulator" -avd glucora-smoke -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect > "$RUNNER_TEMP/glucora-emulator.log" 2>&1 &
+          "$ANDROID_HOME/emulator/emulator" -avd glucora-smoke -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/glucora-emulator.log" 2>&1 &
       - name: Install and launch APK
         shell: bash
         run: bash scripts/android-smoke.sh apk-smoke/glucora.apk
