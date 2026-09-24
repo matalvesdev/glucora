@@ -98,6 +98,11 @@ listagem paginada, consulta e revogação versionada de grants próprios, com
 controles e histórico na tela de preparação de consulta. O slice não habilita
 delivery, identidade do destinatário, download ou acesso de terceiros.
 
+ADR-058 aceita uma infraestrutura gratuita somente para sandbox com dados
+sintéticos. GitHub Actions, Cloudflare Pages e Supabase Free são opções de
+desenvolvimento/piloto técnico; a fundação GCP da ADR-050 permanece a opção de
+produção e exige seus próprios gates operacionais.
+
 Iniciativa F iniciada: F1/F2/F6/F9 possuem registry e gateway provider-neutral com pipeline fail-closed de risco → auth/consent → evidência → provider → schema → guard → fallback. ADR-026 está aceita; nenhuma capability real está ativa.
 
 F1 em fundação: o registry valida ID, intended use, risco, bundle, responsável, corpus, evidência mínima e tools allowlisted antes de ativar uma capability. Não há capability real nem provider selecionado.
