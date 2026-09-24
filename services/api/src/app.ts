@@ -1997,13 +1997,11 @@ export function buildApp(deps: AppDependencies) {
       async (request, reply) => {
         const actor = await deps.identity?.authenticate(request);
         if (!actor)
-          return reply
-            .code(401)
-            .send({
-              code: 'UNAUTHENTICATED',
-              message: 'Autenticação necessária.',
-              request_id: request.id,
-            });
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
         const now = new Date().toISOString();
         const account = await deps.users?.findById(actor.id);
         const purpose = (await deps.consentPurposes?.listPublished(now))?.find(
@@ -2022,35 +2020,29 @@ export function buildApp(deps: AppDependencies) {
             evaluatedAt: now,
           }).allowed
         )
-          return reply
-            .code(403)
-            .send({
-              code: 'ACCESS_DENIED',
-              message: 'Acesso não autorizado.',
-              request_id: request.id,
-            });
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
         if (
           !deps.shareGrants ||
           !deps.consultationReports ||
           !deps.sharingPolicy ||
           !purpose
         )
-          return reply
-            .code(503)
-            .send({
-              code: 'CAPABILITY_UNAVAILABLE',
-              message: 'Compartilhamento temporariamente indisponível.',
-              request_id: request.id,
-            });
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Compartilhamento temporariamente indisponível.',
+            request_id: request.id,
+          });
         const reportId = (request.params as { id: string }).id;
         if (!(await deps.consultationReports.findById(reportId, actor.id)))
-          return reply
-            .code(404)
-            .send({
-              code: 'NOT_FOUND',
-              message: 'Relatório não encontrado.',
-              request_id: request.id,
-            });
+          return reply.code(404).send({
+            code: 'NOT_FOUND',
+            message: 'Relatório não encontrado.',
+            request_id: request.id,
+          });
         const body = request.body as {
           recipient_ref: string;
           purpose_version_id: string;
@@ -2061,13 +2053,11 @@ export function buildApp(deps: AppDependencies) {
           Date.parse(body.expires_at) <= Date.parse(now) ||
           Date.parse(body.expires_at) > Date.parse(now) + 7 * 86400000
         )
-          return reply
-            .code(400)
-            .send({
-              code: 'INVALID_GRANT',
-              message: 'Grant inválido.',
-              request_id: request.id,
-            });
+          return reply.code(400).send({
+            code: 'INVALID_GRANT',
+            message: 'Grant inválido.',
+            request_id: request.id,
+          });
         try {
           const value = await deps.shareGrants.create(
             {
@@ -2090,33 +2080,29 @@ export function buildApp(deps: AppDependencies) {
               occurredAt: now,
             },
           );
-          return reply
-            .code(201)
-            .send({
-              id: value.id,
-              resource_type: value.resourceType,
-              resource_id: value.resourceId,
-              recipient_ref: value.recipientRef,
-              purpose_version_id: value.purposeVersionId,
-              status: value.status,
-              version: value.version,
-              granted_at: value.grantedAt,
-              expires_at: value.expiresAt,
-              revoked_at: value.revokedAt,
-              request_id: request.id,
-            });
+          return reply.code(201).send({
+            id: value.id,
+            resource_type: value.resourceType,
+            resource_id: value.resourceId,
+            recipient_ref: value.recipientRef,
+            purpose_version_id: value.purposeVersionId,
+            status: value.status,
+            version: value.version,
+            granted_at: value.grantedAt,
+            expires_at: value.expiresAt,
+            revoked_at: value.revokedAt,
+            request_id: request.id,
+          });
         } catch (error) {
           if (
             error instanceof Error &&
             error.message === 'Idempotency key reused'
           )
-            return reply
-              .code(409)
-              .send({
-                code: 'IDEMPOTENCY_CONFLICT',
-                message: 'A chave de idempotência já foi utilizada.',
-                request_id: request.id,
-              });
+            return reply.code(409).send({
+              code: 'IDEMPOTENCY_CONFLICT',
+              message: 'A chave de idempotência já foi utilizada.',
+              request_id: request.id,
+            });
           throw error;
         }
       },
@@ -2138,33 +2124,27 @@ export function buildApp(deps: AppDependencies) {
       async (request, reply) => {
         const actor = await deps.identity?.authenticate(request);
         if (!actor)
-          return reply
-            .code(401)
-            .send({
-              code: 'UNAUTHENTICATED',
-              message: 'Autenticação necessária.',
-              request_id: request.id,
-            });
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
         if (!deps.shareGrants)
-          return reply
-            .code(503)
-            .send({
-              code: 'CAPABILITY_UNAVAILABLE',
-              message: 'Compartilhamento temporariamente indisponível.',
-              request_id: request.id,
-            });
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Compartilhamento temporariamente indisponível.',
+            request_id: request.id,
+          });
         const value = await deps.shareGrants.findById(
           (request.params as { id: string }).id,
           actor.id,
         );
         if (!value)
-          return reply
-            .code(404)
-            .send({
-              code: 'NOT_FOUND',
-              message: 'Grant não encontrado.',
-              request_id: request.id,
-            });
+          return reply.code(404).send({
+            code: 'NOT_FOUND',
+            message: 'Grant não encontrado.',
+            request_id: request.id,
+          });
         return {
           id: value.id,
           resource_type: value.resourceType,
@@ -2200,21 +2180,17 @@ export function buildApp(deps: AppDependencies) {
       async (request, reply) => {
         const actor = await deps.identity?.authenticate(request);
         if (!actor)
-          return reply
-            .code(401)
-            .send({
-              code: 'UNAUTHENTICATED',
-              message: 'Autenticação necessária.',
-              request_id: request.id,
-            });
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
         if (!deps.shareGrants || !deps.sharingPolicy)
-          return reply
-            .code(503)
-            .send({
-              code: 'CAPABILITY_UNAVAILABLE',
-              message: 'Compartilhamento temporariamente indisponível.',
-              request_id: request.id,
-            });
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Compartilhamento temporariamente indisponível.',
+            request_id: request.id,
+          });
         const now = new Date().toISOString();
         const body = request.body as { expected_version: number };
         try {
@@ -2245,13 +2221,11 @@ export function buildApp(deps: AppDependencies) {
           };
         } catch (error) {
           if (error instanceof Error && error.message.includes('conflict'))
-            return reply
-              .code(409)
-              .send({
-                code: 'VERSION_CONFLICT',
-                message: 'Versão do grant conflitante.',
-                request_id: request.id,
-              });
+            return reply.code(409).send({
+              code: 'VERSION_CONFLICT',
+              message: 'Versão do grant conflitante.',
+              request_id: request.id,
+            });
           throw error;
         }
       },
