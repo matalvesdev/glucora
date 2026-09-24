@@ -19,6 +19,20 @@ GitHub Actions Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`,
 `ANDROID_KEYSTORE_PASSWORD` e `ANDROID_KEY_PASSWORD`). A chave privada não deve
 ser criada no runner, commitada ou armazenada em artefatos.
 
+Procedimento do responsável, em uma máquina segura com Java:
+
+```powershell
+keytool -genkeypair -v -keystore glucora-release.keystore -alias glucora -keyalg RSA -keysize 4096 -validity 10000
+$b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes('.\glucora-release.keystore'))
+$b64 | gh secret set ANDROID_KEYSTORE_BASE64
+'glucora' | gh secret set ANDROID_KEY_ALIAS
+'<senha-da-keystore>' | gh secret set ANDROID_KEYSTORE_PASSWORD
+'<senha-da-chave>' | gh secret set ANDROID_KEY_PASSWORD
+```
+
+O arquivo `.keystore` deve permanecer fora do repositório e ser guardado com
+backup seguro. A rotação da chave exige uma decisão de release separada.
+
 Na máquina atual não há Java, Gradle ou Android SDK/ADB detectáveis. O build
 remoto funciona; o status permanece `DEBUG_BUILT_UNVERIFIED` até assinatura,
 smoke/E2E em dispositivo ou emulador e checksum de release.
