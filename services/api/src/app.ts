@@ -9,6 +9,9 @@ import {
   ConsentHistoryResponseSchema,
   ConsentPurposeListSchema,
   CreateManualGlucoseObservationBodySchema,
+  CreateConsultationReportBodySchema,
+  ConsultationReportParamsSchema,
+  ConsultationReportSchema,
   CorrectManualGlucoseObservationBodySchema,
   RecordConsentDecisionBodySchema,
   CreatePrivacyRequestBodySchema,
@@ -37,6 +40,7 @@ import type {
   ConsentPurposeRepository,
   ConsentRepository,
   ObservationRepository,
+  ConsultationReportRepository,
   TimelineRepository,
   IdentityPort,
   PrivacyRequestRepository,
@@ -53,6 +57,7 @@ import {
   authorizeConsumerCapability,
   evaluateObservationCatalog,
   validateTimelineListQuery,
+  buildConsultationSummary,
 } from '@glucora/domain';
 import {
   createLogger,
@@ -72,6 +77,7 @@ export interface AppDependencies {
   supportRequestPolicy?: { readonly retentionPolicyRef: string };
   observations?: ObservationRepository;
   timeline?: TimelineRepository;
+  consultationReports?: ConsultationReportRepository;
   logger?: ReturnType<typeof createLogger>;
   metrics?: MetricSink;
 }
@@ -653,6 +659,225 @@ export function buildApp(deps: AppDependencies) {
             values.length > limit && items.at(-1)
               ? encodeTimelineCursor(items.at(-1)!)
               : null,
+          request_id: request.id,
+        };
+      },
+    );
+    routes.post(
+      '/v1/consultation-reports',
+      {
+        schema: {
+          operationId: 'createOwnConsultationReport',
+          headers: IdempotencyHeadersSchema,
+          body: CreateConsultationReportBodySchema,
+          response: {
+            201: ConsultationReportSchema,
+            400: ErrorSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            409: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        const now = new Date().toISOString();
+        const purpose = (await deps.consentPurposes?.listPublished(now))?.find(
+          (item) => item.purposeKey === 'self_care_health_data',
+        );
+        const currentConsent = purpose
+          ? await deps.consents?.current(actor.id, purpose.id)
+          : null;
+        if (
+          !authorizeConsumerCapability({
+            actor,
+            account: account ?? null,
+            subjectUserId: actor.id,
+            purpose: purpose ?? null,
+            currentConsent: currentConsent ?? null,
+            evaluatedAt: now,
+          }).allowed
+        )
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.timeline || !deps.consultationReports || !purpose)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Relatório temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const body = request.body as { from: string; to: string };
+        if (
+          Date.parse(body.from) >= Date.parse(body.to) ||
+          Date.parse(body.to) > Date.parse(now)
+        )
+          return reply.code(400).send({
+            code: 'INVALID_PERIOD',
+            message: 'Período inválido.',
+            request_id: request.id,
+          });
+        try {
+          await deps.timeline.rebuild(actor.id, now);
+          const items = [] as Awaited<
+            ReturnType<TimelineRepository['list']>
+          >[number][];
+          let before: { occurredAt: string; id: string } | undefined;
+          do {
+            const page = await deps.timeline.list(actor.id, {
+              limit: 100,
+              occurredFrom: body.from,
+              occurredTo: body.to,
+              ...(before ? { before } : {}),
+            });
+            items.push(...page);
+            const last = page.at(-1);
+            before =
+              page.length === 100 && last
+                ? { occurredAt: last.occurredAt, id: last.id }
+                : undefined;
+          } while (before);
+          const summary = buildConsultationSummary(
+            { from: body.from, to: body.to },
+            items,
+            now,
+          );
+          if (!summary.ok)
+            return reply.code(400).send({
+              code: 'INVALID_PERIOD',
+              message: 'Período inválido.',
+              request_id: request.id,
+            });
+          const value = await deps.consultationReports.create({
+            report: {
+              id: `rpt_${randomUUID().replaceAll('-', '')}`,
+              userId: actor.id,
+              summary: summary.value,
+              sourceRefs: items.map((item) => ({
+                timelineItemId: item.id,
+                sourceVersion: item.sourceVersion,
+              })),
+              createdAt: now,
+            },
+            idempotencyKey: (request.headers as { 'idempotency-key': string })[
+              'idempotency-key'
+            ],
+            requestHash: createHash('sha256')
+              .update(JSON.stringify({ from: body.from, to: body.to }))
+              .digest('hex'),
+            audit: {
+              id: `aud_${randomUUID().replaceAll('-', '')}`,
+              requestId: request.id,
+              retentionPolicyRef: purpose.retentionPolicyRef,
+              occurredAt: now,
+            },
+          });
+          return reply.code(201).send({
+            id: value.id,
+            period: value.summary.period,
+            generated_at: value.summary.generatedAt,
+            total_records: value.summary.totalRecords,
+            counts_by_category: value.summary.countsByCategory,
+            counts_by_source_type: value.summary.countsBySourceType,
+            limitations: value.summary.limitations,
+            created_at: value.createdAt,
+            request_id: request.id,
+          });
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === 'Idempotency key reused'
+          )
+            return reply.code(409).send({
+              code: 'IDEMPOTENCY_CONFLICT',
+              message: 'A chave de idempotência já foi utilizada.',
+              request_id: request.id,
+            });
+          throw error;
+        }
+      },
+    );
+    routes.get(
+      '/v1/consultation-reports/:id',
+      {
+        schema: {
+          operationId: 'getOwnConsultationReport',
+          params: ConsultationReportParamsSchema,
+          response: {
+            200: ConsultationReportSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            404: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        const now = new Date().toISOString();
+        const purpose = (await deps.consentPurposes?.listPublished(now))?.find(
+          (item) => item.purposeKey === 'self_care_health_data',
+        );
+        const currentConsent = purpose
+          ? await deps.consents?.current(actor.id, purpose.id)
+          : null;
+        if (
+          !authorizeConsumerCapability({
+            actor,
+            account: account ?? null,
+            subjectUserId: actor.id,
+            purpose: purpose ?? null,
+            currentConsent: currentConsent ?? null,
+            evaluatedAt: now,
+          }).allowed
+        )
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.consultationReports)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Relatório temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const value = await deps.consultationReports.findById(
+          (request.params as { id: string }).id,
+          actor.id,
+        );
+        if (!value)
+          return reply.code(404).send({
+            code: 'NOT_FOUND',
+            message: 'Relatório não encontrado.',
+            request_id: request.id,
+          });
+        return {
+          id: value.id,
+          period: value.summary.period,
+          generated_at: value.summary.generatedAt,
+          total_records: value.summary.totalRecords,
+          counts_by_category: value.summary.countsByCategory,
+          counts_by_source_type: value.summary.countsBySourceType,
+          limitations: value.summary.limitations,
+          created_at: value.createdAt,
           request_id: request.id,
         };
       },

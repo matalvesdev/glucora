@@ -979,6 +979,485 @@
         }
       }
     },
+    "/v1/consultation-reports": {
+      "post": {
+        "operationId": "createOwnConsultationReport",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["from", "to"],
+                "properties": {
+                  "from": {
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                    "type": "string"
+                  },
+                  "to": {
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 8,
+              "maxLength": 128,
+              "type": "string"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "period",
+                    "generated_at",
+                    "total_records",
+                    "counts_by_category",
+                    "counts_by_source_type",
+                    "limitations",
+                    "created_at",
+                    "request_id"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^rpt_[A-Za-z0-9_-]{16,64}$",
+                      "type": "string"
+                    },
+                    "period": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": ["from", "to"],
+                      "properties": {
+                        "from": {
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                          "type": "string"
+                        },
+                        "to": {
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "generated_at": {
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                      "type": "string"
+                    },
+                    "total_records": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "counts_by_category": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "counts_by_source_type": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "limitations": {
+                      "minItems": 3,
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": ["summary_is_descriptive_only"]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "missing_records_do_not_mean_events_did_not_happen"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "record_count_does_not_measure_health_or_control"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": ["no_records_in_selected_period"]
+                          }
+                        ]
+                      }
+                    },
+                    "created_at": {
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consultation-reports/{id}": {
+      "get": {
+        "operationId": "getOwnConsultationReport",
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^rpt_[A-Za-z0-9_-]{16,64}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "period",
+                    "generated_at",
+                    "total_records",
+                    "counts_by_category",
+                    "counts_by_source_type",
+                    "limitations",
+                    "created_at",
+                    "request_id"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^rpt_[A-Za-z0-9_-]{16,64}$",
+                      "type": "string"
+                    },
+                    "period": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": ["from", "to"],
+                      "properties": {
+                        "from": {
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                          "type": "string"
+                        },
+                        "to": {
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "generated_at": {
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                      "type": "string"
+                    },
+                    "total_records": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "counts_by_category": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "counts_by_source_type": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "limitations": {
+                      "minItems": 3,
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": ["summary_is_descriptive_only"]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "missing_records_do_not_mean_events_did_not_happen"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "record_count_does_not_measure_health_or_control"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": ["no_records_in_selected_period"]
+                          }
+                        ]
+                      }
+                    },
+                    "created_at": {
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/observations/{id}": {
       "put": {
         "operationId": "correctManualGlucoseObservation",

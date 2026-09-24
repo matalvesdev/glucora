@@ -7,10 +7,11 @@ import './styles.css';
 import { PrivacyAndSupport } from './privacy-and-support';
 import { ManualGlucoseCapture } from './manual-glucose-capture';
 import { OwnTimeline } from './timeline';
+import { ConsultationReport } from './consultation-report';
 function App() {
-  const [view, setView] = useState<'home' | 'privacy' | 'capture' | 'timeline'>(
-    'home',
-  );
+  const [view, setView] = useState<
+    'home' | 'privacy' | 'capture' | 'timeline' | 'consultation'
+  >('home');
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(
     'idle',
   );
@@ -67,12 +68,23 @@ function App() {
           >
             {view === 'timeline' ? 'Início' : 'Timeline'}
           </button>
+          <button
+            type="button"
+            onClick={() =>
+              setView(view === 'consultation' ? 'home' : 'consultation')
+            }
+            className="rounded-full px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-teal-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-800"
+          >
+            {view === 'consultation' ? 'Início' : 'Preparar consulta'}
+          </button>
           <span className="hidden rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 sm:inline-flex">
             Em desenvolvimento
           </span>
         </div>
       </header>
-      {view === 'home' ? (
+      {view === 'consultation' ? (
+        <ConsultationReport />
+      ) : view === 'home' ? (
         <main
           id="main"
           className="mx-auto grid max-w-6xl gap-12 px-6 py-16 md:grid-cols-[1.25fr_1fr] md:py-28"

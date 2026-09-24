@@ -240,6 +240,46 @@ export const TimelineListSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export const CreateConsultationReportBodySchema = Type.Object(
+  { from: IsoTimestampSchema, to: IsoTimestampSchema },
+  { additionalProperties: false },
+);
+const ConsultationLimitationsSchema = Type.Array(
+  Type.Union([
+    Type.Literal('summary_is_descriptive_only'),
+    Type.Literal('missing_records_do_not_mean_events_did_not_happen'),
+    Type.Literal('record_count_does_not_measure_health_or_control'),
+    Type.Literal('no_records_in_selected_period'),
+  ]),
+  { minItems: 3, maxItems: 4 },
+);
+export const ConsultationReportSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^rpt_[A-Za-z0-9_-]{16,64}$' }),
+    period: Type.Object(
+      { from: IsoTimestampSchema, to: IsoTimestampSchema },
+      { additionalProperties: false },
+    ),
+    generated_at: IsoTimestampSchema,
+    total_records: Type.Integer({ minimum: 0 }),
+    counts_by_category: Type.Record(
+      Type.String({ minLength: 1, maxLength: 256 }),
+      Type.Integer({ minimum: 1 }),
+    ),
+    counts_by_source_type: Type.Record(
+      Type.String({ minLength: 1, maxLength: 32 }),
+      Type.Integer({ minimum: 1 }),
+    ),
+    limitations: ConsultationLimitationsSchema,
+    created_at: IsoTimestampSchema,
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
+export const ConsultationReportParamsSchema = Type.Object(
+  { id: Type.String({ pattern: '^rpt_[A-Za-z0-9_-]{16,64}$' }) },
+  { additionalProperties: false },
+);
 export const PrivacyRequestParamsSchema = Type.Object(
   { id: Type.String({ pattern: '^dsr_[A-Za-z0-9_-]{16,64}$' }) },
   { additionalProperties: false },
