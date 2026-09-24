@@ -48,6 +48,31 @@ const syntheticAccount = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 describe('foundation HTTP contract and privacy', () => {
+  it('keeps owned share management deny-by-default', async () => {
+    const { app } = setup();
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/v1/shares/shg_syntheticgrant00001',
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/v1/consultation-reports/rpt_syntheticreport0001/shares',
+          headers: { 'idempotency-key': 'synthetic-share-idempotency-00001' },
+          payload: {
+            recipient_ref: 'rcp_syntheticrecipient01',
+            purpose_version_id: 'pur_syntheticsharing001',
+            expires_at: '2026-01-08T00:00:00.000Z',
+          },
+        })
+      ).statusCode,
+    ).toBe(401);
+  });
   it('returns schema-valid health and server-generated request correlation', async () => {
     const { app } = setup();
     const response = await app.inject({
