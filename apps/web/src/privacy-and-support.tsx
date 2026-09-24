@@ -316,7 +316,16 @@ export function PrivacyAndSupport() {
         cache: 'no-store',
       });
       if (!response.ok) throw new Error('export unavailable');
-      const blob = await response.blob();
+      const expected = response.headers.get('x-glucora-content-sha256');
+      if (!expected || !/^[a-f0-9]{64}$/.test(expected))
+        throw new Error('export integrity unavailable');
+      const bytes = await response.arrayBuffer();
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const actual = [...new Uint8Array(digest)]
+        .map((value) => value.toString(16).padStart(2, '0'))
+        .join('');
+      if (actual !== expected) throw new Error('export integrity mismatch');
+      const blob = new Blob([bytes], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

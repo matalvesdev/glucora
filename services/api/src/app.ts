@@ -1614,7 +1614,9 @@ export function buildApp(deps: AppDependencies) {
           `attachment; filename="${artifact.fileName}"`,
         );
         reply.header('cache-control', 'no-store');
-        return JSON.parse(new TextDecoder().decode(artifact.bytes)) as unknown;
+        reply.header('x-glucora-content-sha256', artifact.sha256);
+        reply.type(artifact.mediaType);
+        return reply.send(Buffer.from(artifact.bytes));
       },
     );
     routes.get(

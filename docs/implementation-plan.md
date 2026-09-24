@@ -169,7 +169,8 @@ ADR-061 entrega E5/G1 por geração direta ao próprio titular: a API exige
 autenticação com `auth_time` de até dez minutos, conta ativa e ownership,
 avança o pedido de forma auditada para `in_review` e agrega adapters PostgreSQL
 de conta, consentimento, observações versionadas, relatórios e pedidos de
-privacidade. A UI baixa o JSON com `no-store`. O pedido não é marcado como
+privacidade. A UI baixa o JSON com `no-store` somente após validar o SHA-256
+dos bytes entregues. O pedido não é marcado como
 `fulfilled`, pois a resposta iniciada não comprova download concluído; storage,
 expiração persistida e evidência final continuam pendentes.
 

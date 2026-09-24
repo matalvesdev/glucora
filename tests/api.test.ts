@@ -1,4 +1,5 @@
 import { afterEach, describe, it, expect } from 'vitest';
+import { createHash } from 'node:crypto';
 import { buildApp } from '../services/api/src/app';
 import { createLogger } from '../packages/observability/src/index';
 import { captureLogs } from '../packages/test-utils/src/index';
@@ -417,6 +418,9 @@ describe('foundation HTTP contract and privacy', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.headers['content-disposition']).toContain(stored.id);
+    expect(response.headers['x-glucora-content-sha256']).toBe(
+      createHash('sha256').update(response.rawPayload).digest('hex'),
+    );
     expect(Value.Check(StructuredExportDocumentSchema, response.json())).toBe(
       true,
     );

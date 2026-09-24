@@ -7,7 +7,8 @@ Escopo: ADR-061, E5 e G1.
 - transição auditada para `in_review` e repetição sem nova transição;
 - adapters PostgreSQL parametrizados pelo titular;
 - JSON versionado, determinístico, com versões e provenance;
-- `Cache-Control: no-store` e filename com ID opaco;
+- `Cache-Control: no-store`, filename com ID opaco e SHA-256 validado pelo
+  navegador sobre os bytes recebidos;
 - interface oferece download somente em estados elegíveis;
 - testes sintéticos cobrem sucesso e autenticação antiga.
 

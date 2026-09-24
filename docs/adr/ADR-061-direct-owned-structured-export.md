@@ -18,7 +18,9 @@ futuro ou autenticação antiga falham antes de qualquer leitura de dados.
 Pedidos `requested` ou `identity_verification_required` avançam para
 `in_review` com evento e auditoria atômicos antes da geração. Repetições em
 `in_review` regeneram o mesmo formato sem nova transição. A resposta usa
-`Cache-Control: no-store` e nome derivado apenas do ID opaco do pedido.
+`Cache-Control: no-store`, nome derivado apenas do ID opaco do pedido e o
+SHA-256 dos bytes exatos em `X-Glucora-Content-SHA256`. O cliente calcula o
+digest recebido e interrompe o download quando houver ausência ou divergência.
 
 Adapters PostgreSQL explícitos exportam conta, consentimentos, todas as versões
 de observações com provenance, relatórios de consulta e solicitações de

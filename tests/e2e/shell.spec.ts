@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { createHash } from 'node:crypto';
 test('responsive shell reports actual backend readiness', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
@@ -331,19 +332,26 @@ test('authenticated user can submit minimized privacy and support requests', asy
   );
   await page.route(
     '**/v1/privacy-requests/dsr_syntheticrequest0001/export',
-    (route) =>
-      route.fulfill({
+    (route) => {
+      const body = JSON.stringify({
+        schemaVersion: 'glucora-export/1',
+        privacyRequestId: 'dsr_syntheticrequest0001',
+        subjectUserId: 'usr_syntheticconsumer001',
+        generatedAt: '2026-01-03T00:00:00.000Z',
+        sections: [],
+      });
+      return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        headers: { 'cache-control': 'no-store' },
-        body: JSON.stringify({
-          schemaVersion: 'glucora-export/1',
-          privacyRequestId: 'dsr_syntheticrequest0001',
-          subjectUserId: 'usr_syntheticconsumer001',
-          generatedAt: '2026-01-03T00:00:00.000Z',
-          sections: [],
-        }),
-      }),
+        headers: {
+          'cache-control': 'no-store',
+          'x-glucora-content-sha256': createHash('sha256')
+            .update(body)
+            .digest('hex'),
+        },
+        body,
+      });
+    },
   );
   await page.route('**/v1/support-requests', async (route) => {
     payloads.push(route.request().postDataJSON());
