@@ -29,10 +29,7 @@ adb shell input keyevent 82
 adb install -r "$apk_path"
 
 launch_result="$(
-  adb shell am start -W \
-    -a android.intent.action.MAIN \
-    -c android.intent.category.LAUNCHER \
-    -p "$package_name" | tr -d '\r'
+  adb shell am start -W -n "$package_name/.MainActivity" | tr -d '\r'
 )"
 printf '%s\n' "$launch_result"
 grep -q '^Status: ok$' <<<"$launch_result"
