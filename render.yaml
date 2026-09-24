@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: glucora-api-sandbox
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: node services/api/dist/migrate.js && node services/api/dist/server.js
+    healthCheckPath: /v1/ready
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: LOG_LEVEL
+        value: info
+      - key: AUTH_ADAPTER
+        value: identity_platform
+      - key: DATABASE_URL
+        sync: false
+      - key: IDENTITY_PLATFORM_PROJECT_ID
+        sync: false
+      - key: PRIVACY_REQUEST_RETENTION_POLICY_REF
+        value: lgpd-sensitive-rights-v1
+      - key: SUPPORT_REQUEST_RETENTION_POLICY_REF
+        value: lgpd-support-v1

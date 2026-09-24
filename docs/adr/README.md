@@ -27,3 +27,7 @@ clínicas adicionais, compartilhamento, exportação, alertas ou beta.
 ADR-054 foi aceita por Mateus Alves Bassane em 2026-09-23, com evidência
 `00001`, para a correção idempotente e versionada de medição manual de glicose
 pelo próprio titular.
+
+ADR-060 foi aceita por Mateus Alves Bassane em 2026-09-24, com evidência
+`00001`, para hospedar a API do sandbox sintético em Render Free por um
+Blueprint de aplicação manual. A decisão não autoriza dados reais ou produção.

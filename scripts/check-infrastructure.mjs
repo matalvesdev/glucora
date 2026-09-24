@@ -9,6 +9,7 @@ const requiredFiles = [
   'infrastructure/gcp/main.tf',
   'infrastructure/gcp/outputs.tf',
   'infrastructure/gcp/terraform.tfvars.example',
+  'render.yaml',
 ];
 
 const contents = await Promise.all(
@@ -22,6 +23,7 @@ const main = byFile.get('infrastructure/gcp/main.tf');
 const variables = byFile.get('infrastructure/gcp/variables.tf');
 const versions = byFile.get('infrastructure/gcp/versions.tf');
 const readme = byFile.get('infrastructure/gcp/README.md');
+const render = byFile.get('render.yaml');
 
 const expectations = [
   [variables, 'default     = false', 'resource creation safety switch'],
@@ -43,6 +45,11 @@ const expectations = [
   [main, 'oidc_token', 'Scheduler OIDC authentication'],
   [main, 'age = 90', 'backup deletion deadline'],
   [readme, 'não cria recursos', 'no-apply documentation'],
+  [render, 'plan: free', 'free sandbox API plan'],
+  [render, 'autoDeployTrigger: off', 'manual sandbox deployment'],
+  [render, 'healthCheckPath: /v1/ready', 'database-aware health check'],
+  [render, 'DATABASE_URL', 'external PostgreSQL configuration'],
+  [render, 'sync: false', 'secret prompt configuration'],
 ];
 
 for (const [content, expected, label] of expectations) {
@@ -53,6 +60,15 @@ for (const [content, expected, label] of expectations) {
 
 if (main.includes('allUsers') || main.includes('0.0.0.0/0')) {
   throw new Error('Infrastructure check failed: public access is forbidden.');
+}
+
+if (
+  render.includes('AUTH_ADAPTER\n        value: development') ||
+  render.includes('DATABASE_URL\n        value:')
+) {
+  throw new Error(
+    'Infrastructure check failed: unsafe sandbox authentication or database secret.',
+  );
 }
 
 console.log(

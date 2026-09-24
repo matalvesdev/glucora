@@ -103,6 +103,11 @@ sintéticos. GitHub Actions, Cloudflare Pages e Supabase Free são opções de
 desenvolvimento/piloto técnico; a fundação GCP da ADR-050 permanece a opção de
 produção e exige seus próprios gates operacionais.
 
+ADR-060 fecha a hospedagem da API do sandbox com Render Free e Blueprint de
+deploy manual. Migrações precedem o start, readiness depende do PostgreSQL e os
+segredos são solicitados fora do repositório. O ambiente continua restrito a
+dados sintéticos e não satisfaz gates de produção ou beta clínico.
+
 ADR-059 aceita Capacitor como casca Android do MVP. O repositório ainda não
 versiona SDK, Gradle gerado ou keystore. O CI constrói o projeto Android de
 forma efêmera, publica checksum e instala no emulador o mesmo APK candidato à
