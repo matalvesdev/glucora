@@ -93,6 +93,10 @@ G1/G3/G7 em backend: repository cria solicitações com idempotência e avança 
 
 E6/G5 em fundação: grants limitam acesso a um relatório, destinatário opaco, finalidade e validade; autorização é deny-by-default e revogação versionada. ADR-025 está aceita; delivery e identidade do destinatário continuam abertos.
 
+ADR-057 aceita a gestão autenticada pelo titular de criação, consulta e
+revogação versionada de grants próprios. O slice não habilita delivery,
+identidade do destinatário, download ou acesso de terceiros.
+
 Iniciativa F iniciada: F1/F2/F6/F9 possuem registry e gateway provider-neutral com pipeline fail-closed de risco → auth/consent → evidência → provider → schema → guard → fallback. ADR-026 está aceita; nenhuma capability real está ativa.
 
 F1 em fundação: o registry valida ID, intended use, risco, bundle, responsável, corpus, evidência mínima e tools allowlisted antes de ativar uma capability. Não há capability real nem provider selecionado.
