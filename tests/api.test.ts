@@ -59,6 +59,10 @@ describe('foundation HTTP contract and privacy', () => {
       ).statusCode,
     ).toBe(401);
     expect(
+      (await app.inject({ method: 'GET', url: '/v1/shares?limit=50' }))
+        .statusCode,
+    ).toBe(401);
+    expect(
       (
         await app.inject({
           method: 'POST',
