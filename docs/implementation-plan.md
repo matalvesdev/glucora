@@ -73,6 +73,12 @@ D2–D4/D7 em fundação interna: parâmetros de consulta, período e cursor opa
 
 Iniciativa E iniciada: E1–E3 possuem composição determinística interna de inventário por período, categoria e origem, sempre acompanhada de limitações explícitas. O registro de risco propõe R0; persistência, perguntas, exportação, compartilhamento e exposição aguardam gates.
 
+ADR-055 aceita a criação e consulta própria de relatório determinístico de
+preparação de consulta, com período explícito, consentimento vigente,
+idempotência, referências/versionamento e auditoria. Perguntas, notas,
+exportação, compartilhamento, IA e acesso profissional seguem fora deste
+slice.
+
 E3/E7 em fundação: relatório determinístico imutável preserva snapshot, referências/versões, idempotência e auditoria atômica. ADR-023 está aceita; retenção real, exportação, compartilhamento e exposição continuam condicionados.
 
 E3/E7 em fundação: o snapshot de relatório é validado antes da persistência; período, contagens, limitações, referências/versionamento e tempo de criação precisam ser coerentes. O controle não habilita exportação, compartilhamento ou exposição pública.

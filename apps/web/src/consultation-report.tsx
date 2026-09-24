@@ -1,0 +1,147 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { Value } from '@sinclair/typebox/value';
+import { ConsultationReportSchema, MeSchema } from '@glucora/contracts';
+import { Button } from '@glucora/ui';
+
+type Access = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
+
+export function ConsultationReport() {
+  const [access, setAccess] = useState<Access>('loading');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [message, setMessage] = useState('');
+  const [report, setReport] = useState<{
+    period: { from: string; to: string };
+    total_records: number;
+    limitations: string[];
+  } | null>(null);
+  useEffect(() => {
+    void fetch('/v1/me', { credentials: 'include', cache: 'no-store' })
+      .then(async (response) => {
+        const body: unknown = await response.json();
+        setAccess(
+          response.ok && Value.Check(MeSchema, body)
+            ? 'authenticated'
+            : response.status === 401 || response.status === 403
+              ? 'unauthenticated'
+              : 'error',
+        );
+      })
+      .catch(() => setAccess('error'));
+  }, []);
+  async function create(event: FormEvent) {
+    event.preventDefault();
+    if (
+      !from ||
+      !to ||
+      !Number.isFinite(Date.parse(from)) ||
+      Date.parse(from) >= Date.parse(to)
+    ) {
+      setMessage('Informe um período válido.');
+      return;
+    }
+    const period = {
+      from: new Date(from).toISOString(),
+      to: new Date(to).toISOString(),
+    };
+    try {
+      const response = await fetch('/v1/consultation-reports', {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': crypto.randomUUID(),
+        },
+        body: JSON.stringify(period),
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(ConsultationReportSchema, body))
+        throw new Error('invalid');
+      const value = body as {
+        period: { from: string; to: string };
+        total_records: number;
+        limitations: string[];
+      };
+      setReport(value);
+      setMessage('Resumo criado sem interpretação clínica.');
+    } catch {
+      setMessage('Não foi possível criar o resumo agora.');
+    }
+  }
+  return (
+    <main id="main" className="mx-auto max-w-3xl px-6 py-12 md:py-20">
+      <p className="text-xs font-semibold uppercase tracking-[.2em] text-teal-800">
+        Preparação para consulta
+      </p>
+      <h1 className="mt-4 text-4xl font-medium tracking-tight md:text-5xl">
+        Organizar seu histórico
+      </h1>
+      <p className="mt-5 max-w-2xl text-lg leading-relaxed text-stone-600">
+        Crie um resumo descritivo de registros para um período. Ele não
+        interpreta seus dados nem faz recomendações.
+      </p>
+      <div
+        role="status"
+        aria-live="polite"
+        className="mt-10 rounded-2xl border border-stone-200 bg-white p-5 text-stone-700"
+      >
+        {access === 'loading'
+          ? 'Verificando seu acesso…'
+          : access === 'unauthenticated'
+            ? 'Entre na sua conta e autorize a finalidade de autocuidado para preparar um resumo.'
+            : access === 'error'
+              ? 'Não foi possível verificar seu acesso.'
+              : message}
+      </div>
+      {access === 'authenticated' ? (
+        <div className="mt-8 space-y-8">
+          <form
+            onSubmit={(event) => void create(event)}
+            className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm"
+          >
+            <label className="block text-sm font-medium" htmlFor="report-from">
+              Início do período
+            </label>
+            <input
+              id="report-from"
+              type="datetime-local"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5"
+              required
+            />
+            <label
+              className="mt-6 block text-sm font-medium"
+              htmlFor="report-to"
+            >
+              Fim do período
+            </label>
+            <input
+              id="report-to"
+              type="datetime-local"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5"
+              required
+            />
+            <Button className="mt-6">Criar resumo</Button>
+          </form>
+          {report ? (
+            <section className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm">
+              <h2 className="text-xl font-semibold">Resumo do período</h2>
+              <p className="mt-3 text-stone-600">
+                {report.total_records} registros no período selecionado.
+              </p>
+              <p className="mt-4 text-sm text-stone-600">
+                Limitações: este resumo é apenas descritivo; ausência de
+                registros não prova ausência de eventos; contagens não medem
+                saúde ou controle.
+              </p>
+            </section>
+          ) : null}
+        </div>
+      ) : null}
+    </main>
+  );
+}

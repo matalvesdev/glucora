@@ -32,6 +32,7 @@ try {
     consentDecisions: database.consentDecisions,
     observations: database.observations,
     timeline: database.timeline,
+    consultationReports: database.consultationReports,
     privacyRequests: database.privacyRequests,
     ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
       ? {

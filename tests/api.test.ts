@@ -745,6 +745,87 @@ describe('foundation HTTP contract and privacy', () => {
       ).statusCode,
     ).toBe(409);
   });
+  it('creates an owned descriptive consultation report from the rebuilt timeline', async () => {
+    const purpose = {
+      id: 'pur_selfcarehealth0001',
+      purposeKey: 'self_care_health_data',
+      version: 1,
+      status: 'published' as const,
+      title: 'Synthetic health purpose',
+      noticeText: 'Synthetic consent notice.',
+      legalBasisRef: 'synthetic-legal-ref',
+      retentionPolicyRef: 'synthetic-retention-ref',
+      effectiveFrom: '2020-01-01T00:00:00.000Z',
+      retiredAt: null,
+    };
+    let rebuilds = 0;
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter(),
+      users: { findById: async () => syntheticAccount },
+      consentPurposes: { listPublished: async () => [purpose] },
+      consents: {
+        record: async () => {
+          throw new Error('not used');
+        },
+        history: async () => [],
+        listHistory: async () => [],
+        current: async () => ({
+          id: 'cne_syntheticgrant00001',
+          userId: syntheticAccount.id,
+          purposeVersionId: purpose.id,
+          decision: 'granted' as const,
+          channel: 'synthetic',
+          idempotencyKey: 'synthetic-grant-key',
+          occurredAt: '2026-01-01T00:00:00.000Z',
+          recordedAt: '2026-01-01T00:00:00.000Z',
+        }),
+      },
+      timeline: {
+        rebuild: async () => ++rebuilds,
+        list: async () => [
+          {
+            id: 'tli_syntheticreport001',
+            userId: syntheticAccount.id,
+            sourceKind: 'observation',
+            sourceId: 'obs_syntheticcapture001',
+            sourceVersion: 1,
+            category: { system: 'http://loinc.org', code: '2339-0' },
+            factClass: 'declaration',
+            sourceType: 'manual',
+            occurredAt: '2026-01-01T10:00:00.000Z',
+            observedTimezone: 'America/Sao_Paulo',
+            utcOffsetMinutes: -180,
+            projectedAt: '2026-01-02T00:00:00.000Z',
+          },
+        ],
+      },
+      consultationReports: {
+        create: async (input) => input.report,
+        findById: async () => null,
+      },
+    });
+    apps.push(app);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/consultation-reports',
+      headers: {
+        'x-glucora-dev-actor': syntheticAccount.id,
+        'idempotency-key': 'test-consultation-report-key',
+      },
+      payload: {
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2026-01-02T00:00:00.000Z',
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      total_records: 1,
+      counts_by_source_type: { manual: 1 },
+      limitations: expect.arrayContaining(['summary_is_descriptive_only']),
+    });
+    expect(rebuilds).toBe(1);
+  });
   it('does not log request payloads, headers, URL values or upstream error details', async () => {
     const { app, logs } = setup(async () => {
       throw new Error('sensitive-upstream-detail');
