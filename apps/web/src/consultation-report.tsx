@@ -1,6 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Value } from '@sinclair/typebox/value';
-import { ConsultationReportSchema, MeSchema } from '@glucora/contracts';
+import {
+  ConsultationReportSchema,
+  CreateShareGrantBodySchema,
+  MeSchema,
+  ShareGrantSchema,
+} from '@glucora/contracts';
 import { Button } from '@glucora/ui';
 
 type Access = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
@@ -17,6 +22,15 @@ export function ConsultationReport() {
     limitations: string[];
   } | null>(null);
   const [questions, setQuestions] = useState<string[]>([]);
+  const [recipientRef, setRecipientRef] = useState('');
+  const [purposeVersionId, setPurposeVersionId] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [share, setShare] = useState<{
+    id: string;
+    version: number;
+    status: 'active' | 'revoked';
+    expires_at: string;
+  } | null>(null);
   useEffect(() => {
     void fetch('/v1/me', { credentials: 'include', cache: 'no-store' })
       .then(async (response) => {
@@ -97,6 +111,77 @@ export function ConsultationReport() {
       );
     } catch {
       setMessage('Não foi possível atualizar suas perguntas agora.');
+    }
+  }
+  async function createShare() {
+    if (
+      !report ||
+      !Value.Check(CreateShareGrantBodySchema, {
+        recipient_ref: recipientRef,
+        purpose_version_id: purposeVersionId,
+        expires_at: new Date(expiresAt).toISOString(),
+      })
+    ) {
+      setMessage(
+        'Informe a referência opaca, a finalidade publicada e uma expiração válida.',
+      );
+      return;
+    }
+    try {
+      const response = await fetch(
+        `/v1/consultation-reports/${report.id}/shares`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            recipient_ref: recipientRef,
+            purpose_version_id: purposeVersionId,
+            expires_at: new Date(expiresAt).toISOString(),
+          }),
+        },
+      );
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(ShareGrantSchema, body))
+        throw new Error('invalid');
+      const value = body as {
+        id: string;
+        version: number;
+        status: 'active' | 'revoked';
+        expires_at: string;
+      };
+      setShare(value);
+      setMessage(
+        'Compartilhamento criado. A entrega ao destinatário ainda não está habilitada.',
+      );
+    } catch {
+      setMessage('Não foi possível criar o compartilhamento agora.');
+    }
+  }
+  async function revokeShare() {
+    if (!share) return;
+    try {
+      const response = await fetch(`/v1/shares/${share.id}/revoke`, {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': crypto.randomUUID(),
+        },
+        body: JSON.stringify({ expected_version: share.version }),
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !Value.Check(ShareGrantSchema, body))
+        throw new Error('invalid');
+      setShare(body as typeof share);
+      setMessage('Compartilhamento revogado.');
+    } catch {
+      setMessage('Não foi possível revogar o compartilhamento agora.');
     }
   }
   return (
@@ -195,6 +280,52 @@ export function ConsultationReport() {
                     {label}
                   </label>
                 ))}
+              </fieldset>
+              <fieldset className="mt-8 border-t border-stone-200 pt-6">
+                <legend className="font-semibold">
+                  Compartilhar este resumo
+                </legend>
+                <p className="mt-2 text-sm text-stone-600">
+                  Use somente uma referência opaca previamente emitida. Nenhum
+                  e-mail ou telefone é aceito.
+                </p>
+                <input
+                  aria-label="Referência opaca do destinatário"
+                  value={recipientRef}
+                  onChange={(event) => setRecipientRef(event.target.value)}
+                  placeholder="Referência opaca"
+                  className="mt-3 w-full rounded-xl border border-stone-300 px-3 py-2.5"
+                />
+                <input
+                  aria-label="ID da versão da finalidade"
+                  value={purposeVersionId}
+                  onChange={(event) => setPurposeVersionId(event.target.value)}
+                  placeholder="ID da finalidade publicada"
+                  className="mt-3 w-full rounded-xl border border-stone-300 px-3 py-2.5"
+                />
+                <input
+                  aria-label="Expiração do compartilhamento"
+                  type="datetime-local"
+                  value={expiresAt}
+                  onChange={(event) => setExpiresAt(event.target.value)}
+                  className="mt-3 w-full rounded-xl border border-stone-300 px-3 py-2.5"
+                />
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <Button type="button" onClick={() => void createShare()}>
+                    Criar compartilhamento
+                  </Button>
+                  {share?.status === 'active' ? (
+                    <Button type="button" onClick={() => void revokeShare()}>
+                      Revogar compartilhamento
+                    </Button>
+                  ) : null}
+                </div>
+                {share ? (
+                  <p className="mt-3 text-sm text-stone-600">
+                    Estado: {share.status}; expira em{' '}
+                    {new Date(share.expires_at).toLocaleString()}.
+                  </p>
+                ) : null}
               </fieldset>
             </section>
           ) : null}
