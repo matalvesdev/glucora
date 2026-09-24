@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.glucora.app',
   appName: 'Glucora',
   webDir: '../../apps/web/dist',
-  bundledWebRuntime: false,
 };
 
 export default config;
