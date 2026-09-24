@@ -39,7 +39,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(25);
+        ).toBe(26);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -159,6 +159,12 @@ describe('real PostgreSQL migrations and readiness', () => {
             'infrastructure/migrations/0025_manual_glucose_corrections.sql',
           ),
           join(directory, '0025_manual_glucose_corrections.sql'),
+        );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0026_consultation_question_checklist.sql',
+          ),
+          join(directory, '0026_consultation_question_checklist.sql'),
         );
         await writeFile(
           join(directory, '0015_failure.sql'),

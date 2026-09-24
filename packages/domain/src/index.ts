@@ -210,6 +210,7 @@ export * from './manual-glucose-catalog';
 export * from './context-event';
 export * from './timeline';
 export * from './consultation';
+export * from './consultation-question';
 export * from './privacy-request';
 export * from './sharing';
 export * from './ai';
