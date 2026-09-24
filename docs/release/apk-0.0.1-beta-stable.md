@@ -3,11 +3,11 @@
 **Status atual: APK debug construído com sucesso; build release assinado preparado no CI, mas ainda bloqueado pela ausência dos secrets de assinatura. Beta estável ainda não declarado.**
 
 O repositório contém uma casca Capacitor e workflow remoto. O workflow
-`36007567364` concluiu com sucesso em 2m46s e produziu o APK debug abaixo:
+`36015658808` concluiu com sucesso em 3m13s e produziu o APK debug abaixo:
 
 - artefato: `glucora-apk-0.0.1-beta-stable-debug/app-debug.apk`
-- o checksum verificado localmente foi `cb3bd85c42a0e1527678432c721112f44eaf7942bb43711f76b94bdfa49b9164`;
-- execução: https://github.com/matalvesdev/glucora/actions/runs/36007567364
+- o checksum verificado localmente foi `a1c42e553aff5e977376218f08f5c256540c1795d25f392bc4a92906f70a93b3`;
+- execução: https://github.com/matalvesdev/glucora/actions/runs/36015658808
 
 Este é um APK debug, sem assinatura de release e sem smoke test em dispositivo.
 O workflow `.github/workflows/android-apk.yml` já contém o caminho de release:
