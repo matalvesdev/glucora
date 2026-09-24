@@ -110,6 +110,10 @@ promoção: debug sem secrets, release assinado quando os secrets estiverem
 presentes. A evidência remota do smoke e a assinatura continuam gates de
 release.
 
+H9 Android: o workflow `36023096257` validou o APK debug em emulador API 35,
+com instalação, abertura da activity principal e processo vivo. O release
+assinado e seu smoke permanecem bloqueados pelos secrets de assinatura.
+
 Iniciativa F iniciada: F1/F2/F6/F9 possuem registry e gateway provider-neutral com pipeline fail-closed de risco → auth/consent → evidência → provider → schema → guard → fallback. ADR-026 está aceita; nenhuma capability real está ativa.
 
 F1 em fundação: o registry valida ID, intended use, risco, bundle, responsável, corpus, evidência mínima e tools allowlisted antes de ativar uma capability. Não há capability real nem provider selecionado.

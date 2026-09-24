@@ -1,16 +1,18 @@
 # Status do APK `0.0.1-beta-stable`
 
-**Status atual: APK debug construído com sucesso; build release assinado e smoke em emulador preparados no CI, mas ainda aguardam uma execução validada do novo workflow e os secrets de assinatura. Beta estável ainda não declarado.**
+**Status atual: APK debug construído e aprovado no smoke em emulador; o release assinado continua bloqueado pela ausência dos secrets de assinatura. Beta estável ainda não declarado.**
 
 O repositório contém uma casca Capacitor e workflow remoto. O workflow
-`36015658808` concluiu com sucesso em 3m13s e produziu o APK debug abaixo:
+`36023096257` concluiu com sucesso e produziu e testou o APK debug abaixo:
 
 - artefato: `glucora-apk-0.0.1-beta-stable-debug/app-debug.apk`
-- o checksum verificado localmente foi `a1c42e553aff5e977376218f08f5c256540c1795d25f392bc4a92906f70a93b3`;
-- execução: https://github.com/matalvesdev/glucora/actions/runs/36015658808
+- checksum do candidato testado: `872d1db3183a52c6b898588468a64a0d1532a4e7f78f4457a40c94d679b8870e`;
+- execução: https://github.com/matalvesdev/glucora/actions/runs/36023096257
 
-Este é um APK debug, sem assinatura de release. A execução citada ocorreu antes
-da inclusão do job de smoke em emulador e não prova esse gate.
+Este é um APK debug, sem assinatura de release. O job iniciou Android API 35,
+instalou o APK, abriu `com.glucora.app/.MainActivity` com `Status: ok` e
+confirmou o processo vivo após dez segundos. A evidência contém o tipo de build,
+o checksum, o log do emulador e o logcat.
 O workflow `.github/workflows/android-apk.yml` já contém o caminho de release:
 quando os quatro GitHub Actions Secrets estiverem presentes, ele decodifica a
 keystore no diretório temporário do runner, executa `assembleRelease` com
@@ -23,9 +25,9 @@ testa o release assinado. O script aguarda o boot, instala o APK, resolve e
 abre a activity principal e confirma que o processo permanece vivo. Logs,
 tipo do build e checksum são publicados como evidência por 14 dias.
 
-O próximo gate é obter uma execução remota verde desse smoke e gerar um build
-release assinado contra sandbox sintético. Isso não autoriza beta clínico nem
-dados reais.
+O próximo gate é gerar um build release assinado contra sandbox sintético; o
+mesmo smoke será executado automaticamente sobre esse artefato. Isso não
+autoriza beta clínico nem dados reais.
 
 Para o build assinado, o workflow deve receber a keystore e as senhas por
 GitHub Actions Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`,
@@ -49,7 +51,7 @@ O arquivo `.keystore` deve permanecer fora do repositório e ser guardado com
 backup seguro. A rotação da chave exige uma decisão de release separada.
 
 Na máquina atual não há Java, Gradle ou Android SDK/ADB detectáveis. O build
-remoto funciona; o status permanece `DEBUG_BUILT_UNSIGNED_RELEASE_PENDING` até
-uma execução do novo smoke passar, os secrets existirem, o workflow gerar o
-artefato release assinado e o checksum de release ser registrado. O smoke do
-release assinado será executado automaticamente na mesma execução.
+remoto funciona; o status passa a `DEBUG_SMOKE_PASSED_SIGNED_RELEASE_PENDING`.
+Ele só poderá mudar para beta estável quando os secrets existirem, o workflow
+gerar o artefato release assinado, registrar seu checksum e executar o smoke
+verde sobre esse mesmo artefato.
