@@ -105,7 +105,7 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools emulator system-images;android-35;google_apis;x86_64
-      - name: Create and start Android emulator
+      - name: Create emulator, install and launch APK
         shell: bash
         run: |
           if [[ -e /dev/kvm ]]; then
@@ -113,15 +113,18 @@ jobs:
           fi
           echo 'no' | avdmanager create avd --force --name glucora-smoke --package 'system-images;android-35;google_apis;x86_64'
           "$ANDROID_HOME/emulator/emulator" -avd glucora-smoke -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/glucora-emulator.log" 2>&1 &
-      - name: Install and launch APK
-        shell: bash
-        run: bash scripts/android-smoke.sh apk-smoke/glucora.apk
+          emulator_pid=$!
+          trap 'kill "$emulator_pid" 2>/dev/null || true' EXIT
+          smoke_status=0
+          bash scripts/android-smoke.sh apk-smoke/glucora.apk || smoke_status=$?
+          timeout 10 adb logcat -d -t 500 > apk-smoke/logcat.txt 2>&1 || true
+          exit "$smoke_status"
       - name: Record smoke evidence
         if: always()
         shell: bash
         run: |
           cp "$RUNNER_TEMP/glucora-emulator.log" apk-smoke/emulator.log || true
-          adb logcat -d -t 500 > apk-smoke/logcat.txt 2>&1 || true
+          touch apk-smoke/logcat.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
