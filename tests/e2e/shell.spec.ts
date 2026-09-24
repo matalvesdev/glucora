@@ -127,6 +127,50 @@ test('authenticated user records an approved manual glucose measurement', async 
   expect(JSON.stringify(payloads[0])).not.toContain('alert');
 });
 
+test('authenticated user filters the own timeline with closed parameters', async ({
+  page,
+}) => {
+  let requested = '';
+  await page.route('**/v1/me', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'usr_syntheticconsumer001',
+        kind: 'consumer',
+        status: 'active',
+        locale: 'pt-BR',
+        timezone: 'America/Sao_Paulo',
+        created_at: '2026-01-01T00:00:00.000Z',
+        updated_at: '2026-01-01T00:00:00.000Z',
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    }),
+  );
+  await page.route('**/v1/timeline**', async (route) => {
+    requested = route.request().url();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        state: 'empty',
+        groups: [],
+        next_cursor: null,
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Timeline' }).click();
+  await page.getByLabel('Origem').selectOption('observation');
+  await page.getByLabel('A partir de').fill('2026-01-01T00:00');
+  await page.getByLabel('Até').fill('2026-01-02T00:00');
+  await page.getByRole('button', { name: 'Aplicar filtros' }).click();
+  await expect.poll(() => requested).toContain('source_kind=observation');
+  expect(requested).toContain('occurred_from=2026-01-01T');
+  expect(requested).not.toContain('decimal');
+});
+
 test('authenticated user can submit minimized privacy and support requests', async ({
   page,
 }) => {
