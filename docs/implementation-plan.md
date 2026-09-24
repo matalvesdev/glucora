@@ -104,7 +104,11 @@ desenvolvimento/piloto técnico; a fundação GCP da ADR-050 permanece a opção
 produção e exige seus próprios gates operacionais.
 
 ADR-059 aceita Capacitor como casca Android do MVP. O repositório ainda não
-contém SDK/Gradle/keystore nem APK; o build permanece um gate de release.
+versiona SDK, Gradle gerado ou keystore. O CI constrói o projeto Android de
+forma efêmera, publica checksum e instala no emulador o mesmo APK candidato à
+promoção: debug sem secrets, release assinado quando os secrets estiverem
+presentes. A evidência remota do smoke e a assinatura continuam gates de
+release.
 
 Iniciativa F iniciada: F1/F2/F6/F9 possuem registry e gateway provider-neutral com pipeline fail-closed de risco → auth/consent → evidência → provider → schema → guard → fallback. ADR-026 está aceita; nenhuma capability real está ativa.
 

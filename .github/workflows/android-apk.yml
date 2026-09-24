@@ -74,3 +74,58 @@ jobs:
       - name: Release signing skipped
         if: env.HAS_ANDROID_SIGNING_SECRETS != 'true'
         run: echo "Signed release APK skipped because one or more Android signing secrets are missing."
+      - name: Select APK for emulator smoke test
+        shell: bash
+        run: |
+          mkdir -p apps/mobile/android/app/build/outputs/apk/smoke
+          if [[ "$HAS_ANDROID_SIGNING_SECRETS" == 'true' ]]; then
+            cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk apps/mobile/android/app/build/outputs/apk/smoke/glucora.apk
+            printf '%s\n' 'release-signed' > apps/mobile/android/app/build/outputs/apk/smoke/build-type.txt
+          else
+            cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk apps/mobile/android/app/build/outputs/apk/smoke/glucora.apk
+            printf '%s\n' 'debug' > apps/mobile/android/app/build/outputs/apk/smoke/build-type.txt
+          fi
+          sha256sum apps/mobile/android/app/build/outputs/apk/smoke/glucora.apk > apps/mobile/android/app/build/outputs/apk/smoke/glucora.apk.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: glucora-apk-smoke-candidate
+          retention-days: 1
+          path: apps/mobile/android/app/build/outputs/apk/smoke/
+
+  smoke-apk:
+    needs: build-apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: glucora-apk-smoke-candidate
+          path: apk-smoke
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools emulator system-images;android-35;google_apis;x86_64
+      - name: Create and start Android emulator
+        shell: bash
+        run: |
+          echo 'no' | avdmanager create avd --force --name glucora-smoke --package 'system-images;android-35;google_apis;x86_64'
+          "$ANDROID_HOME/emulator/emulator" -avd glucora-smoke -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect > "$RUNNER_TEMP/glucora-emulator.log" 2>&1 &
+      - name: Install and launch APK
+        shell: bash
+        run: bash scripts/android-smoke.sh apk-smoke/glucora.apk
+      - name: Record smoke evidence
+        if: always()
+        shell: bash
+        run: |
+          cp "$RUNNER_TEMP/glucora-emulator.log" apk-smoke/emulator.log || true
+          adb logcat -d -t 500 > apk-smoke/logcat.txt 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: glucora-apk-0.0.1-beta-stable-smoke-evidence
+          retention-days: 14
+          path: |
+            apk-smoke/build-type.txt
+            apk-smoke/glucora.apk.sha256
+            apk-smoke/emulator.log
+            apk-smoke/logcat.txt
