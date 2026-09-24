@@ -47,15 +47,15 @@ B3 em runtime condicionado: `AUTH_ADAPTER=identity_platform` exige project ID v�
 Iniciativa B em andamento: B1 concluído; B2 possui persistência mínima de conta/perfil; B3 possui autenticação local fail-closed e `/v1/me` autorizado somente para conta ativa. B4/B5 publicam a versão 1 da finalidade `self_care_health_data` aprovada na ADR-042 e expõem consulta, concessão e revogação autenticadas, idempotentes e auditadas na mesma transação. B6 mantém política deny-by-default e matriz sintética: nenhuma capacidade de captura ou leitura de saúde é liberada por este slice. B7 mantém auditoria mínima e imutável, agora com emissor de decisão de consentimento. B8 mostra a finalidade, a base legal, a retenção e o controle de autorização/revogação. A identidade de produção continua aberta; o adapter de desenvolvimento segue proibido em produção.
 As demais iniciativas permanecem backlog documentado, sem tabelas ou endpoints especulativos.
 
-Iniciativa C iniciada: C1 possui núcleo de domínio para observações quantitativas com valor exato, unidade, tempos UTC, origem, provenance, classe factual, status e versão. Persistência, captura e catálogos clínicos continuam bloqueados até os gates aplicáveis; ADR-017 está aceita.
+Iniciativa C avançada: C1 possui núcleo de domínio e C2/C4/C5 entregam captura e correção próprias da medição manual aprovada, com persistência, provenance, versões e auditoria. Categorias clínicas adicionais, conversão, interpretação e alertas continuam bloqueados; ADR-017 está aceita.
 
 ADR-052 foi aceita com LOINC `2339-0`, `mg/dL`, inserção manual capilar declarada pelo titular e ausência de faixas/alertas. C2 expõe criação autenticada/idempotente, leitura própria paginada desse único catálogo e interface que coleta somente valor e momento, todas condicionadas a conta ativa, ownership e consentimento vigente para `self_care_health_data`; não há conversão, interpretação, faixa, alerta ou beta neste slice.
 
-C2/C4 em fundação: PostgreSQL e repository suportam gravação atômica de uma observação inicial e sua provenance, sem endpoint ou catálogo clínico. ADR-018 está aceita; captura real continua bloqueada.
+C2/C4 implementados no escopo aprovado: PostgreSQL e repository suportam gravação atômica da observação manual aprovada e sua provenance, condicionadas a ownership e consentimento. Nenhum catálogo clínico adicional é habilitado. ADR-018 está aceita.
 
 C2/C4 em fundação: a provenance agora é validada no domínio e no adapter antes da transação, incluindo identidade, fonte, timestamps e evidência de transformação para dados derivados. A validação não habilita captura pública ou catálogo clínico.
 
-C5 em fundação: correção preserva a versão anterior, cria provenance e auditoria na mesma transação e bloqueia conflito de versão. ADR-019 está aceita; o fluxo não está exposto ao usuário.
+C5 implementado no escopo aprovado: correção preserva a versão anterior, cria provenance e auditoria na mesma transação e bloqueia conflito de versão. ADR-019 está aceita.
 
 ADR-054 expõe C5 exclusivamente para a medição manual aprovada na ADR-052:
 a rota e a interface exigem ownership, consentimento, idempotência e versão
@@ -67,9 +67,9 @@ C3 em fundação: eventos contextuais canônicos preservam categoria codificada,
 
 Iniciativa D: D1–D7 possuem projeção cronológica descartável, rebuild transacional, leitura própria autorizada, filtros fechados, cursor opaco, agrupamento local, estado vazio sem inferência e interface responsiva. A ADR-053 condiciona o acesso à finalidade publicada e ao consentimento vigente; a timeline não é source of truth nem inclui interpretação clínica.
 
-D2–D4/D7 em fundação interna: leitura exige autorização completa antes do repository, suporta filtros limitados por período/categoria/origem, agrupamento pelo dia local e estado vazio que não interpreta ausência como evento negativo. A API pública e a UX foram autorizadas pela ADR-053 e serão entregues no slice de timeline própria.
+D2–D4/D7 implementados no escopo aprovado: leitura exige autorização completa antes do repository, suporta filtros limitados por período/categoria/origem, agrupamento pelo dia local e estado vazio que não interpreta ausência como evento negativo. A API pública e a UX seguem a ADR-053.
 
-D2–D4/D7 em fundação interna: parâmetros de consulta, período e cursor opaco são validados antes da consulta PostgreSQL; filtros malformados são rejeitados sem atingir a projeção.
+D2–D4/D7 implementados: parâmetros de consulta, período e cursor opaco são validados antes da consulta PostgreSQL; filtros malformados são rejeitados sem atingir a projeção.
 
 Iniciativa E avançada: E1–E4 possuem composição determinística interna de inventário por período, categoria e origem, relatório próprio e checklist fechado de perguntas não clínicas, sempre acompanhados de limitações explícitas. O registro de risco propõe R0; exportação, compartilhamento e exposição continuam aguardando gates.
 
