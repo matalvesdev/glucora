@@ -28,13 +28,12 @@ done
 adb shell input keyevent 82
 adb install -r "$apk_path"
 
-resolved_activity="$(adb shell cmd package resolve-activity --brief "$package_name" | tr -d '\r')"
-if [[ "$resolved_activity" != "$package_name/"* ]]; then
-  echo "Unable to resolve the Glucora launch activity." >&2
-  exit 1
-fi
-
-launch_result="$(adb shell am start -W -n "$resolved_activity" | tr -d '\r')"
+launch_result="$(
+  adb shell am start -W \
+    -a android.intent.action.MAIN \
+    -c android.intent.category.LAUNCHER \
+    -p "$package_name" | tr -d '\r'
+)"
 printf '%s\n' "$launch_result"
 grep -q '^Status: ok$' <<<"$launch_result"
 
