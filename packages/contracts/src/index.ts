@@ -311,6 +311,38 @@ export const ConsultationQuestionListSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export const ShareGrantParamsSchema = Type.Object(
+  { id: Type.String({ pattern: '^shg_[A-Za-z0-9_-]{16,64}$' }) },
+  { additionalProperties: false },
+);
+export const CreateShareGrantBodySchema = Type.Object(
+  {
+    recipient_ref: Type.String({ pattern: '^[A-Za-z0-9_-]{16,128}$' }),
+    purpose_version_id: Type.String({ pattern: '^pur_[A-Za-z0-9_-]{16,64}$' }),
+    expires_at: IsoTimestampSchema,
+  },
+  { additionalProperties: false },
+);
+export const ShareGrantSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^shg_[A-Za-z0-9_-]{16,64}$' }),
+    resource_type: Type.Literal('consultation_report'),
+    resource_id: Type.String({ pattern: '^rpt_[A-Za-z0-9_-]{16,64}$' }),
+    recipient_ref: Type.String({ pattern: '^[A-Za-z0-9_-]{16,128}$' }),
+    purpose_version_id: Type.String({ pattern: '^pur_[A-Za-z0-9_-]{16,64}$' }),
+    status: Type.Union([Type.Literal('active'), Type.Literal('revoked')]),
+    version: Type.Integer({ minimum: 1 }),
+    granted_at: IsoTimestampSchema,
+    expires_at: IsoTimestampSchema,
+    revoked_at: Type.Union([IsoTimestampSchema, Type.Null()]),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
+export const RevokeShareGrantBodySchema = Type.Object(
+  { expected_version: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
 export const PrivacyRequestParamsSchema = Type.Object(
   { id: Type.String({ pattern: '^dsr_[A-Za-z0-9_-]{16,64}$' }) },
   { additionalProperties: false },

@@ -15,6 +15,10 @@ import {
   ConsultationQuestionBodySchema,
   ConsultationQuestionListSchema,
   ConsultationQuestionSchema,
+  ShareGrantParamsSchema,
+  CreateShareGrantBodySchema,
+  ShareGrantSchema,
+  RevokeShareGrantBodySchema,
   CorrectManualGlucoseObservationBodySchema,
   RecordConsentDecisionBodySchema,
   CreatePrivacyRequestBodySchema,
@@ -53,6 +57,7 @@ import type {
   SupportRequestRepository,
   SupportRequestCategory,
   UserAccountRepository,
+  ShareGrantRepository,
 } from '@glucora/domain';
 import {
   approvedManualGlucoseCatalog,
@@ -83,6 +88,8 @@ export interface AppDependencies {
   timeline?: TimelineRepository;
   consultationReports?: ConsultationReportRepository;
   consultationQuestions?: ConsultationQuestionRepository;
+  shareGrants?: ShareGrantRepository;
+  sharingPolicy?: { readonly retentionPolicyRef: string };
   logger?: ReturnType<typeof createLogger>;
   metrics?: MetricSink;
 }
@@ -1968,6 +1975,58 @@ export function buildApp(deps: AppDependencies) {
         };
       },
     );
+    routes.post(
+      '/v1/consultation-reports/:id/shares',
+      {
+        schema: {
+          operationId: 'createOwnShareGrant',
+          headers: IdempotencyHeadersSchema,
+          params: ConsultationReportParamsSchema,
+          body: CreateShareGrantBodySchema,
+          response: { 201: ShareGrantSchema, 400: ErrorSchema, 401: ErrorSchema, 403: ErrorSchema, 404: ErrorSchema, 409: ErrorSchema, 503: ErrorSchema },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor) return reply.code(401).send({ code: 'UNAUTHENTICATED', message: 'Autenticação necessária.', request_id: request.id });
+        const now = new Date().toISOString();
+        const account = await deps.users?.findById(actor.id);
+        const purpose = (await deps.consentPurposes?.listPublished(now))?.find((item) => item.purposeKey === 'self_care_health_data');
+        const consent = purpose ? await deps.consents?.current(actor.id, purpose.id) : null;
+        if (!authorizeConsumerCapability({ actor, account: account ?? null, subjectUserId: actor.id, purpose: purpose ?? null, currentConsent: consent ?? null, evaluatedAt: now }).allowed)
+          return reply.code(403).send({ code: 'ACCESS_DENIED', message: 'Acesso não autorizado.', request_id: request.id });
+        if (!deps.shareGrants || !deps.consultationReports || !deps.sharingPolicy || !purpose)
+          return reply.code(503).send({ code: 'CAPABILITY_UNAVAILABLE', message: 'Compartilhamento temporariamente indisponível.', request_id: request.id });
+        const reportId = (request.params as { id: string }).id;
+        if (!(await deps.consultationReports.findById(reportId, actor.id)))
+          return reply.code(404).send({ code: 'NOT_FOUND', message: 'Relatório não encontrado.', request_id: request.id });
+        const body = request.body as { recipient_ref: string; purpose_version_id: string; expires_at: string };
+        if (body.purpose_version_id !== purpose.id || Date.parse(body.expires_at) <= Date.parse(now) || Date.parse(body.expires_at) > Date.parse(now) + 7 * 86400000)
+          return reply.code(400).send({ code: 'INVALID_GRANT', message: 'Grant inválido.', request_id: request.id });
+        try {
+          const value = await deps.shareGrants.create({ id: `shg_${randomUUID().replaceAll('-', '')}`, ownerUserId: actor.id, recipientRef: body.recipient_ref, resourceType: 'consultation_report', resourceId: reportId, purposeVersionId: purpose.id, status: 'active', version: 1, grantedAt: now, expiresAt: body.expires_at, revokedAt: null }, { id: `aud_${randomUUID().replaceAll('-', '')}`, requestId: request.id, retentionPolicyRef: deps.sharingPolicy.retentionPolicyRef, occurredAt: now });
+          return reply.code(201).send({ id: value.id, resource_type: value.resourceType, resource_id: value.resourceId, recipient_ref: value.recipientRef, purpose_version_id: value.purposeVersionId, status: value.status, version: value.version, granted_at: value.grantedAt, expires_at: value.expiresAt, revoked_at: value.revokedAt, request_id: request.id });
+        } catch (error) {
+          if (error instanceof Error && error.message === 'Idempotency key reused') return reply.code(409).send({ code: 'IDEMPOTENCY_CONFLICT', message: 'A chave de idempotência já foi utilizada.', request_id: request.id });
+          throw error;
+        }
+      },
+    );
+    routes.get('/v1/shares/:id', { schema: { operationId: 'getOwnShareGrant', params: ShareGrantParamsSchema, response: { 200: ShareGrantSchema, 401: ErrorSchema, 404: ErrorSchema, 503: ErrorSchema } } }, async (request, reply) => {
+      const actor = await deps.identity?.authenticate(request);
+      if (!actor) return reply.code(401).send({ code: 'UNAUTHENTICATED', message: 'Autenticação necessária.', request_id: request.id });
+      if (!deps.shareGrants) return reply.code(503).send({ code: 'CAPABILITY_UNAVAILABLE', message: 'Compartilhamento temporariamente indisponível.', request_id: request.id });
+      const value = await deps.shareGrants.findById((request.params as { id: string }).id, actor.id);
+      if (!value) return reply.code(404).send({ code: 'NOT_FOUND', message: 'Grant não encontrado.', request_id: request.id });
+      return { id: value.id, resource_type: value.resourceType, resource_id: value.resourceId, recipient_ref: value.recipientRef, purpose_version_id: value.purposeVersionId, status: value.status, version: value.version, granted_at: value.grantedAt, expires_at: value.expiresAt, revoked_at: value.revokedAt, request_id: request.id };
+    });
+    routes.post('/v1/shares/:id/revoke', { schema: { operationId: 'revokeOwnShareGrant', headers: IdempotencyHeadersSchema, params: ShareGrantParamsSchema, body: RevokeShareGrantBodySchema, response: { 200: ShareGrantSchema, 401: ErrorSchema, 404: ErrorSchema, 409: ErrorSchema, 503: ErrorSchema } } }, async (request, reply) => {
+      const actor = await deps.identity?.authenticate(request);
+      if (!actor) return reply.code(401).send({ code: 'UNAUTHENTICATED', message: 'Autenticação necessária.', request_id: request.id });
+      if (!deps.shareGrants || !deps.sharingPolicy) return reply.code(503).send({ code: 'CAPABILITY_UNAVAILABLE', message: 'Compartilhamento temporariamente indisponível.', request_id: request.id });
+      const now = new Date().toISOString(); const body = request.body as { expected_version: number };
+      try { const value = await deps.shareGrants.revoke((request.params as { id: string }).id, actor.id, body.expected_version, now, { id: `aud_${randomUUID().replaceAll('-', '')}`, requestId: request.id, retentionPolicyRef: deps.sharingPolicy.retentionPolicyRef, occurredAt: now }); return { id: value.id, resource_type: value.resourceType, resource_id: value.resourceId, recipient_ref: value.recipientRef, purpose_version_id: value.purposeVersionId, status: value.status, version: value.version, granted_at: value.grantedAt, expires_at: value.expiresAt, revoked_at: value.revokedAt, request_id: request.id }; } catch (error) { if (error instanceof Error && error.message.includes('conflict')) return reply.code(409).send({ code: 'VERSION_CONFLICT', message: 'Versão do grant conflitante.', request_id: request.id }); throw error; }
+    });
   });
   return app;
 }

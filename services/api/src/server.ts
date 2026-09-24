@@ -34,6 +34,14 @@ try {
     timeline: database.timeline,
     consultationReports: database.consultationReports,
     consultationQuestions: database.consultationQuestions,
+    shareGrants: database.shareGrants,
+    ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
+      ? {
+          sharingPolicy: {
+            retentionPolicyRef: config.PRIVACY_REQUEST_RETENTION_POLICY_REF,
+          },
+        }
+      : {}),
     privacyRequests: database.privacyRequests,
     ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
       ? {
