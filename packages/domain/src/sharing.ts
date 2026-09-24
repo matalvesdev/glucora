@@ -67,6 +67,10 @@ export interface ShareGrantRepository {
     audit: ShareAudit,
   ): Promise<ShareGrant>;
   findById(id: string, ownerUserId: string): Promise<ShareGrant | null>;
+  listOwn(
+    ownerUserId: string,
+    input?: { readonly limit: number; readonly before?: string },
+  ): Promise<ShareGrant[]>;
 }
 export interface ShareAudit {
   readonly id: string;

@@ -140,5 +140,22 @@ export function createPostgresShareGrantRepository(
       );
       return result.rows[0] ? map(result.rows[0]) : null;
     },
+    async listOwn(ownerUserId, input = { limit: 20 }) {
+      const values: unknown[] = [ownerUserId];
+      let predicate = '';
+      if (input.before) {
+        const cursor = JSON.parse(
+          Buffer.from(input.before, 'base64url').toString('utf8'),
+        ) as { grantedAt: string; id: string };
+        values.push(cursor.grantedAt, cursor.id);
+        predicate = ' AND (granted_at,id) < ($2,$3)';
+      }
+      values.push(input.limit);
+      const result = await pool.query<Row>(
+        `SELECT ${columns} FROM sharing.grants WHERE owner_user_id=$1${predicate} ORDER BY granted_at DESC,id DESC LIMIT $${values.length}`,
+        values,
+      );
+      return result.rows.map(map);
+    },
   };
 }

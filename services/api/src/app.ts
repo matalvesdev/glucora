@@ -19,6 +19,8 @@ import {
   CreateShareGrantBodySchema,
   ShareGrantSchema,
   RevokeShareGrantBodySchema,
+  ListShareGrantsQuerySchema,
+  ShareGrantListSchema,
   CorrectManualGlucoseObservationBodySchema,
   RecordConsentDecisionBodySchema,
   CreatePrivacyRequestBodySchema,
@@ -2105,6 +2107,93 @@ export function buildApp(deps: AppDependencies) {
             });
           throw error;
         }
+      },
+    );
+    routes.get(
+      '/v1/shares',
+      {
+        schema: {
+          operationId: 'listOwnShareGrants',
+          querystring: ListShareGrantsQuerySchema,
+          response: {
+            200: ShareGrantListSchema,
+            401: ErrorSchema,
+            400: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply
+            .code(401)
+            .send({
+              code: 'UNAUTHENTICATED',
+              message: 'Autenticação necessária.',
+              request_id: request.id,
+            });
+        if (!deps.shareGrants)
+          return reply
+            .code(503)
+            .send({
+              code: 'CAPABILITY_UNAVAILABLE',
+              message: 'Compartilhamento temporariamente indisponível.',
+              request_id: request.id,
+            });
+        const query = request.query as { limit?: number; cursor?: string };
+        let before: string | undefined;
+        if (query.cursor) {
+          try {
+            const parsed = JSON.parse(
+              Buffer.from(query.cursor, 'base64url').toString('utf8'),
+            ) as { grantedAt?: string; id?: string };
+            if (
+              !parsed.grantedAt ||
+              !parsed.id ||
+              !Number.isFinite(Date.parse(parsed.grantedAt))
+            )
+              throw new Error('invalid');
+            before = query.cursor;
+          } catch {
+            return reply
+              .code(400)
+              .send({
+                code: 'INVALID_CURSOR',
+                message: 'Cursor inválido.',
+                request_id: request.id,
+              });
+          }
+        }
+        const limit = query.limit ?? 20;
+        const values = await deps.shareGrants.listOwn(actor.id, {
+          limit: limit + 1,
+          ...(before ? { before } : {}),
+        });
+        const next = values.length > limit ? values[limit] : null;
+        const encode = (value: { grantedAt: string; id: string }) =>
+          Buffer.from(
+            JSON.stringify({ grantedAt: value.grantedAt, id: value.id }),
+          ).toString('base64url');
+        return {
+          items: values
+            .slice(0, limit)
+            .map((value) => ({
+              id: value.id,
+              resource_type: value.resourceType,
+              resource_id: value.resourceId,
+              recipient_ref: value.recipientRef,
+              purpose_version_id: value.purposeVersionId,
+              status: value.status,
+              version: value.version,
+              granted_at: value.grantedAt,
+              expires_at: value.expiresAt,
+              revoked_at: value.revokedAt,
+              request_id: request.id,
+            })),
+          next_cursor: next ? encode(next) : null,
+          request_id: request.id,
+        };
       },
     );
     routes.get(

@@ -315,6 +315,13 @@ export const ShareGrantParamsSchema = Type.Object(
   { id: Type.String({ pattern: '^shg_[A-Za-z0-9_-]{16,64}$' }) },
   { additionalProperties: false },
 );
+export const ListShareGrantsQuerySchema = Type.Object(
+  {
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+    cursor: Type.Optional(Type.String({ pattern: '^[A-Za-z0-9_-]{8,512}$' })),
+  },
+  { additionalProperties: false },
+);
 export const CreateShareGrantBodySchema = Type.Object(
   {
     recipient_ref: Type.String({ pattern: '^[A-Za-z0-9_-]{16,128}$' }),
@@ -341,6 +348,14 @@ export const ShareGrantSchema = Type.Object(
 );
 export const RevokeShareGrantBodySchema = Type.Object(
   { expected_version: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
+export const ShareGrantListSchema = Type.Object(
+  {
+    items: Type.Array(ShareGrantSchema, { maxItems: 50 }),
+    next_cursor: Type.Union([Type.String(), Type.Null()]),
+    request_id: RequestIdSchema,
+  },
   { additionalProperties: false },
 );
 export const PrivacyRequestParamsSchema = Type.Object(
