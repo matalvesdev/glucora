@@ -13,4 +13,7 @@ Escopo: ADR-061, E5 e G1.
 - testes sintéticos cobrem sucesso e autenticação antiga.
 
 Storage, expiração persistida, confirmação de download e transição para
-`fulfilled` continuam fora desta validação. Nenhum dado real foi usado.
+`fulfilled` eram pendências da ADR-061. A ADR-062 adiciona recibo mínimo de
+geração e confirmação pelo cliente; confirmação, evento, auditoria e transição
+são atômicos. Storage e expiração persistida continuam fora desta validação.
+Nenhum dado real foi usado.

@@ -317,14 +317,27 @@ export function PrivacyAndSupport() {
       });
       if (!response.ok) throw new Error('export unavailable');
       const expected = response.headers.get('x-glucora-content-sha256');
+      const deliveryId = response.headers.get('x-glucora-export-delivery-id');
       if (!expected || !/^[a-f0-9]{64}$/.test(expected))
         throw new Error('export integrity unavailable');
+      if (!deliveryId || !/^exp_[A-Za-z0-9_-]{16,64}$/.test(deliveryId))
+        throw new Error('export receipt unavailable');
       const bytes = await response.arrayBuffer();
       const digest = await crypto.subtle.digest('SHA-256', bytes);
       const actual = [...new Uint8Array(digest)]
         .map((value) => value.toString(16).padStart(2, '0'))
         .join('');
       if (actual !== expected) throw new Error('export integrity mismatch');
+      const acknowledgement = await submitJson(
+        `/v1/privacy-requests/${id}/export-acknowledgements`,
+        { delivery_id: deliveryId, sha256: actual },
+      );
+      const acknowledged: unknown = await acknowledgement.json();
+      if (
+        !acknowledgement.ok ||
+        !Value.Check(PrivacyRequestSchema, acknowledged)
+      )
+        throw new Error('export acknowledgement failed');
       const blob = new Blob([bytes], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');

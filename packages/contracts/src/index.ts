@@ -430,6 +430,13 @@ export const StructuredExportDocumentSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+export const AcknowledgeExportDeliveryBodySchema = Type.Object(
+  {
+    delivery_id: Type.String({ pattern: '^exp_[A-Za-z0-9_-]{16,64}$' }),
+    sha256: Type.String({ pattern: '^[a-f0-9]{64}$' }),
+  },
+  { additionalProperties: false },
+);
 const SupportCategorySchema = Type.Union([
   Type.Literal('account_access'),
   Type.Literal('privacy_rights'),

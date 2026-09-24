@@ -44,6 +44,7 @@ try {
       : {}),
     privacyRequests: database.privacyRequests,
     exportSections: database.exportSections,
+    exportDeliveries: database.exportDeliveries,
     ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
       ? {
           privacyRequestPolicy: {

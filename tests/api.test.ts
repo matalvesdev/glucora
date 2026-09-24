@@ -359,7 +359,7 @@ describe('foundation HTTP contract and privacy', () => {
       userId: syntheticAccount.id,
       kind: 'export' as const,
       scope: 'all_user_data' as const,
-      status: 'requested' as 'requested' | 'in_review',
+      status: 'requested' as 'requested' | 'in_review' | 'fulfilled',
       version: 1,
       requestedAt: '2026-01-02T00:00:00.000Z',
       updatedAt: '2026-01-02T00:00:00.000Z',
@@ -398,6 +398,24 @@ describe('foundation HTTP contract and privacy', () => {
         }),
       },
     ];
+    let generatedDelivery:
+      import('../packages/domain/src/index').ExportDeliveryReceipt | undefined;
+    const exportDeliveries = {
+      recordGenerated: async (
+        receipt: import('../packages/domain/src/index').ExportDeliveryReceipt,
+      ) => {
+        generatedDelivery = receipt;
+      },
+      acknowledgeAndFulfill: async () => {
+        stored = {
+          ...stored,
+          status: 'fulfilled',
+          version: 3,
+          updatedAt: '2026-01-03T00:00:01.000Z',
+        };
+        return stored;
+      },
+    };
     const now = new Date('2026-01-03T00:00:00.000Z');
     const app = buildApp({
       checkReadiness: async () => {},
@@ -406,6 +424,7 @@ describe('foundation HTTP contract and privacy', () => {
       privacyRequests,
       privacyRequestPolicy: { retentionPolicyRef: 'synthetic-policy' },
       exportSections,
+      exportDeliveries,
       now: () => now,
       logger: createLogger('silent'),
     });
@@ -421,6 +440,11 @@ describe('foundation HTTP contract and privacy', () => {
     expect(response.headers['x-glucora-content-sha256']).toBe(
       createHash('sha256').update(response.rawPayload).digest('hex'),
     );
+    expect(generatedDelivery).toMatchObject({
+      requestId: stored.id,
+      userId: syntheticAccount.id,
+      sha256: response.headers['x-glucora-content-sha256'],
+    });
     expect(Value.Check(StructuredExportDocumentSchema, response.json())).toBe(
       true,
     );
@@ -430,6 +454,20 @@ describe('foundation HTTP contract and privacy', () => {
       sections: [{ records: [{ data: { locale: 'pt-BR' } }] }],
     });
     expect(stored).toMatchObject({ status: 'in_review', version: 2 });
+    const acknowledged = await app.inject({
+      method: 'POST',
+      url: `/v1/privacy-requests/${stored.id}/export-acknowledgements`,
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+      payload: {
+        delivery_id: generatedDelivery!.id,
+        sha256: generatedDelivery!.sha256,
+      },
+    });
+    expect(acknowledged.statusCode).toBe(200);
+    expect(acknowledged.json()).toMatchObject({
+      status: 'fulfilled',
+      version: 3,
+    });
 
     const stale = buildApp({
       checkReadiness: async () => {},
@@ -444,6 +482,7 @@ describe('foundation HTTP contract and privacy', () => {
       privacyRequests,
       privacyRequestPolicy: { retentionPolicyRef: 'synthetic-policy' },
       exportSections,
+      exportDeliveries,
       now: () => now,
       logger: createLogger('silent'),
     });

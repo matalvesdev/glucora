@@ -31,3 +31,28 @@ export interface StructuredExportArtifact {
   readonly bytes: Uint8Array;
   readonly recordCount: number;
 }
+
+export interface ExportDeliveryReceipt {
+  readonly id: string;
+  readonly requestId: string;
+  readonly userId: string;
+  readonly sha256: string;
+  readonly recordCount: number;
+  readonly generatedAt: string;
+  readonly acknowledgedAt: string | null;
+}
+
+export interface ExportDeliveryRepository {
+  recordGenerated(receipt: ExportDeliveryReceipt): Promise<void>;
+  acknowledgeAndFulfill(input: {
+    readonly deliveryId: string;
+    readonly requestId: string;
+    readonly userId: string;
+    readonly sha256: string;
+    readonly acknowledgedAt: string;
+    readonly eventId: string;
+    readonly auditId: string;
+    readonly auditRequestId: string;
+    readonly retentionPolicyRef: string;
+  }): Promise<import('./privacy-request').PrivacyRequest>;
+}

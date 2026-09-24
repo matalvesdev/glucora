@@ -41,6 +41,7 @@ import {
   PrivacyRequestHistorySchema,
   PrivacyRequestSchema,
   StructuredExportDocumentSchema,
+  AcknowledgeExportDeliveryBodySchema,
   SupportRequestListSchema,
   SupportRequestSchema,
 } from '@glucora/contracts';
@@ -62,6 +63,7 @@ import type {
   UserAccountRepository,
   ShareGrantRepository,
   DataExportSectionPort,
+  ExportDeliveryRepository,
 } from '@glucora/domain';
 import {
   approvedManualGlucoseCatalog,
@@ -88,6 +90,7 @@ export interface AppDependencies {
   privacyRequests?: PrivacyRequestRepository;
   privacyRequestPolicy?: { readonly retentionPolicyRef: string };
   exportSections?: readonly DataExportSectionPort[];
+  exportDeliveries?: ExportDeliveryRepository;
   supportRequests?: SupportRequestRepository;
   supportRequestPolicy?: { readonly retentionPolicyRef: string };
   observations?: ObservationRepository;
@@ -1553,6 +1556,7 @@ export function buildApp(deps: AppDependencies) {
         if (
           !deps.privacyRequests ||
           !deps.privacyRequestPolicy ||
+          !deps.exportDeliveries ||
           !deps.exportSections?.length
         )
           return reply.code(503).send({
@@ -1609,14 +1613,101 @@ export function buildApp(deps: AppDependencies) {
           generatedAt: occurredAt,
           sections: deps.exportSections,
         });
+        const deliveryId = `exp_${randomUUID().replaceAll('-', '')}`;
+        await deps.exportDeliveries.recordGenerated({
+          id: deliveryId,
+          requestId: value.id,
+          userId: actor.id,
+          sha256: artifact.sha256,
+          recordCount: artifact.recordCount,
+          generatedAt: artifact.generatedAt,
+          acknowledgedAt: null,
+        });
         reply.header(
           'content-disposition',
           `attachment; filename="${artifact.fileName}"`,
         );
         reply.header('cache-control', 'no-store');
         reply.header('x-glucora-content-sha256', artifact.sha256);
+        reply.header('x-glucora-export-delivery-id', deliveryId);
         reply.type(artifact.mediaType);
         return reply.send(Buffer.from(artifact.bytes));
+      },
+    );
+    routes.post(
+      '/v1/privacy-requests/:id/export-acknowledgements',
+      {
+        schema: {
+          operationId: 'acknowledgeStructuredExport',
+          params: PrivacyRequestParamsSchema,
+          body: AcknowledgeExportDeliveryBodySchema,
+          response: {
+            200: PrivacyRequestSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            409: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.exportDeliveries || !deps.privacyRequestPolicy)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Confirmação temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const { id } = request.params as { id: string };
+        const body = request.body as { delivery_id: string; sha256: string };
+        const occurredAt = (deps.now?.() ?? new Date()).toISOString();
+        try {
+          const value = await deps.exportDeliveries.acknowledgeAndFulfill({
+            deliveryId: body.delivery_id,
+            requestId: id,
+            userId: actor.id,
+            sha256: body.sha256,
+            acknowledgedAt: occurredAt,
+            eventId: `dse_${randomUUID().replaceAll('-', '')}`,
+            auditId: `aud_${randomUUID().replaceAll('-', '')}`,
+            auditRequestId: request.id,
+            retentionPolicyRef: deps.privacyRequestPolicy.retentionPolicyRef,
+          });
+          return {
+            id: value.id,
+            kind: value.kind,
+            scope: value.scope,
+            status: value.status,
+            version: value.version,
+            requested_at: value.requestedAt,
+            updated_at: value.updatedAt,
+            request_id: request.id,
+          };
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === 'Export delivery conflict'
+          )
+            return reply.code(409).send({
+              code: 'EXPORT_DELIVERY_CONFLICT',
+              message: 'A confirmação da exportação não corresponde ao pedido.',
+              request_id: request.id,
+            });
+          throw error;
+        }
       },
     );
     routes.get(

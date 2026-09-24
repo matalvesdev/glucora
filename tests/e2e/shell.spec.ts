@@ -348,10 +348,29 @@ test('authenticated user can submit minimized privacy and support requests', asy
           'x-glucora-content-sha256': createHash('sha256')
             .update(body)
             .digest('hex'),
+          'x-glucora-export-delivery-id': 'exp_syntheticdelivery001',
         },
         body,
       });
     },
+  );
+  await page.route(
+    '**/v1/privacy-requests/dsr_syntheticrequest0001/export-acknowledgements',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'dsr_syntheticrequest0001',
+          kind: 'export',
+          scope: 'all_user_data',
+          status: 'fulfilled',
+          version: 3,
+          requested_at: '2026-01-02T00:00:00.000Z',
+          updated_at: '2026-01-03T00:00:01.000Z',
+          request_id: '123e4567-e89b-42d3-a456-426614174000',
+        }),
+      }),
   );
   await page.route('**/v1/support-requests', async (route) => {
     payloads.push(route.request().postDataJSON());

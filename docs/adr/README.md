@@ -35,3 +35,7 @@ Blueprint de aplicação manual. A decisão não autoriza dados reais ou produç
 ADR-061 foi aceita por Mateus Alves Bassane em 2026-09-24, com evidência
 `00001`, para entregar exportação JSON diretamente ao titular após autenticação
 recente, ownership e transição auditada para revisão.
+
+ADR-062 foi aceita por Mateus Alves Bassane em 2026-09-24, com evidência
+`00001`, para registrar geração e confirmação de recebimento por checksum antes
+da transição atômica do pedido de exportação para `fulfilled`.

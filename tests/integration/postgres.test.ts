@@ -40,7 +40,7 @@ describe('real PostgreSQL migrations and readiness', () => {
         expect(
           (await client.query('SELECT * FROM glucora_meta.schema_migrations'))
             .rowCount,
-        ).toBe(26);
+        ).toBe(27);
         await copyFile(
           resolve('infrastructure/migrations/0001_foundation.sql'),
           join(directory, '0001_foundation.sql'),
@@ -166,6 +166,12 @@ describe('real PostgreSQL migrations and readiness', () => {
             'infrastructure/migrations/0026_consultation_question_checklist.sql',
           ),
           join(directory, '0026_consultation_question_checklist.sql'),
+        );
+        await copyFile(
+          resolve(
+            'infrastructure/migrations/0027_export_delivery_receipts.sql',
+          ),
+          join(directory, '0027_export_delivery_receipts.sql'),
         );
         await writeFile(
           join(directory, '0015_failure.sql'),
@@ -973,6 +979,28 @@ describe('real PostgreSQL migrations and readiness', () => {
               [privacyRequest.id],
             ),
           ).rejects.toThrow();
+          await ready.exportDeliveries.recordGenerated({
+            id: 'exp_syntheticdelivery001',
+            requestId: inReview.id,
+            userId: inReview.userId,
+            sha256: exportArtifact.sha256,
+            recordCount: exportArtifact.recordCount,
+            generatedAt: exportArtifact.generatedAt,
+            acknowledgedAt: null,
+          });
+          await expect(
+            ready.exportDeliveries.acknowledgeAndFulfill({
+              deliveryId: 'exp_syntheticdelivery001',
+              requestId: inReview.id,
+              userId: inReview.userId,
+              sha256: exportArtifact.sha256,
+              acknowledgedAt: '2026-01-06T00:00:01.000Z',
+              eventId: 'dse_syntheticfulfilled01',
+              auditId: 'aud_syntheticdelivery0001',
+              auditRequestId: 'd6e3ec27-f5d0-4452-a262-6f564fab3830',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+            }),
+          ).resolves.toMatchObject({ status: 'fulfilled', version: 3 });
           await expect(
             ready.timeline.list('usr_syntheticconsumer001', { limit: 10 }),
           ).resolves.toMatchObject([
