@@ -11,6 +11,7 @@ import {
   ConsentPurposeListSchema,
   PrivacyRequestSchema,
   PrivacyRequestListSchema,
+  StructuredExportDocumentSchema,
   SupportRequestListSchema,
   SupportRequestSchema,
   ManualGlucoseObservationSchema,
@@ -25,6 +26,7 @@ import type {
   SupportRequestRepository,
   ObservationRepository,
   TimelineRepository,
+  DataExportSectionPort,
 } from '../packages/domain/src/index';
 const apps: ReturnType<typeof buildApp>[] = [];
 afterEach(async () => {
@@ -349,6 +351,107 @@ describe('foundation HTTP contract and privacy', () => {
         })
       ).statusCode,
     ).toBe(400);
+  });
+  it('exports only the recently authenticated owner data and advances verification', async () => {
+    let stored = {
+      id: 'dsr_syntheticexport0001',
+      userId: syntheticAccount.id,
+      kind: 'export' as const,
+      scope: 'all_user_data' as const,
+      status: 'requested' as 'requested' | 'in_review',
+      version: 1,
+      requestedAt: '2026-01-02T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    };
+    const privacyRequests: PrivacyRequestRepository = {
+      create: async () => stored,
+      transition: async (input) => {
+        stored = {
+          ...stored,
+          status: 'in_review',
+          version: 2,
+          updatedAt: input.event.occurredAt,
+        };
+        return stored;
+      },
+      findById: async (id, userId) =>
+        id === stored.id && userId === stored.userId ? stored : null,
+      history: async () => [],
+      listOwn: async () => [stored],
+    };
+    const exportSections: readonly DataExportSectionPort[] = [
+      {
+        sectionId: 'account',
+        loadForSubject: async (userId) => ({
+          sectionId: 'account',
+          records: [
+            {
+              id: userId,
+              subjectUserId: userId,
+              resourceType: 'account',
+              resourceVersion: '1',
+              provenanceRefs: [],
+              data: { locale: 'pt-BR' },
+            },
+          ],
+        }),
+      },
+    ];
+    const now = new Date('2026-01-03T00:00:00.000Z');
+    const app = buildApp({
+      checkReadiness: async () => {},
+      identity: createDevelopmentIdentityAdapter({ now: () => now }),
+      users: { findById: async () => syntheticAccount },
+      privacyRequests,
+      privacyRequestPolicy: { retentionPolicyRef: 'synthetic-policy' },
+      exportSections,
+      now: () => now,
+      logger: createLogger('silent'),
+    });
+    apps.push(app);
+    const response = await app.inject({
+      method: 'POST',
+      url: `/v1/privacy-requests/${stored.id}/export`,
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['content-disposition']).toContain(stored.id);
+    expect(Value.Check(StructuredExportDocumentSchema, response.json())).toBe(
+      true,
+    );
+    expect(response.json()).toMatchObject({
+      privacyRequestId: stored.id,
+      subjectUserId: syntheticAccount.id,
+      sections: [{ records: [{ data: { locale: 'pt-BR' } }] }],
+    });
+    expect(stored).toMatchObject({ status: 'in_review', version: 2 });
+
+    const stale = buildApp({
+      checkReadiness: async () => {},
+      identity: {
+        authenticate: async () => ({
+          id: syntheticAccount.id,
+          kind: 'consumer',
+          authenticatedAt: '2026-01-01T00:00:00.000Z',
+        }),
+      },
+      users: { findById: async () => syntheticAccount },
+      privacyRequests,
+      privacyRequestPolicy: { retentionPolicyRef: 'synthetic-policy' },
+      exportSections,
+      now: () => now,
+      logger: createLogger('silent'),
+    });
+    apps.push(stale);
+    expect(
+      (
+        await stale.inject({
+          method: 'POST',
+          url: `/v1/privacy-requests/${stored.id}/export`,
+        })
+      ).statusCode,
+    ).toBe(403);
   });
   it('creates and lists controlled support requests without free text', async () => {
     const stored = {

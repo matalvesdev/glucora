@@ -7,7 +7,12 @@ const request = (authorization?: string) =>
 describe('Identity Platform adapter boundary', () => {
   it('resolves a verified external subject to the internal consumer only', async () => {
     const adapter = createIdentityPlatformIdentityAdapter({
-      verifier: { verify: async () => ({ subject: 'provider-subject-001' }) },
+      verifier: {
+        verify: async () => ({
+          subject: 'provider-subject-001',
+          authenticatedAt: '2026-01-01T00:00:00.000Z',
+        }),
+      },
       subjects: {
         resolveConsumerId: async (subject) =>
           subject === 'provider-subject-001'
@@ -20,6 +25,7 @@ describe('Identity Platform adapter boundary', () => {
     ).resolves.toEqual({
       id: 'usr_syntheticconsumer001',
       kind: 'consumer',
+      authenticatedAt: '2026-01-01T00:00:00.000Z',
     });
   });
 

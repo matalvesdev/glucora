@@ -1,6 +1,7 @@
 export interface AuthenticatedActor {
   readonly id: string;
   readonly kind: 'consumer';
+  readonly authenticatedAt?: string;
 }
 
 export interface IdentityPort<RequestContext> {

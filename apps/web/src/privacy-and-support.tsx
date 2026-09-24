@@ -141,6 +141,9 @@ export function PrivacyAndSupport() {
   const [privacyHistoryLoading, setPrivacyHistoryLoading] = useState<
     string | null
   >(null);
+  const [exportDownloadState, setExportDownloadState] = useState<
+    Readonly<Record<string, 'loading' | 'error'>>
+  >({});
 
   useEffect(() => {
     const controller = new AbortController();
@@ -301,6 +304,33 @@ export function PrivacyAndSupport() {
       }));
     } finally {
       setPrivacyHistoryLoading(null);
+    }
+  }
+
+  async function downloadExport(id: string) {
+    setExportDownloadState((current) => ({ ...current, [id]: 'loading' }));
+    try {
+      const response = await fetch(`/v1/privacy-requests/${id}/export`, {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (!response.ok) throw new Error('export unavailable');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `glucora-export-${id}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setExportDownloadState((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      await loadPrivacyRequests();
+    } catch {
+      setExportDownloadState((current) => ({ ...current, [id]: 'error' }));
     }
   }
 
@@ -567,7 +597,28 @@ export function PrivacyAndSupport() {
                             ? 'Ocultar histórico'
                             : 'Ver histórico'}
                       </Button>
+                      {item.kind === 'export' &&
+                      [
+                        'requested',
+                        'identity_verification_required',
+                        'in_review',
+                      ].includes(item.status) ? (
+                        <Button
+                          type="button"
+                          disabled={exportDownloadState[item.id] === 'loading'}
+                          onClick={() => void downloadExport(item.id)}
+                        >
+                          {exportDownloadState[item.id] === 'loading'
+                            ? 'Preparando…'
+                            : 'Baixar JSON'}
+                        </Button>
+                      ) : null}
                     </div>
+                    {exportDownloadState[item.id] === 'error' ? (
+                      <p className="w-full text-sm text-stone-600">
+                        Entre novamente e tente baixar a exportação.
+                      </p>
+                    ) : null}
                     {privacyHistory[item.id] ? (
                       <ol className="w-full space-y-2 border-t border-stone-100 pt-3 text-sm text-stone-600">
                         {(privacyHistory[item.id] ?? []).map((event, index) => (

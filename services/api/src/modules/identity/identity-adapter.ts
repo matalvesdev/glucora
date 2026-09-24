@@ -8,18 +8,27 @@ export function createDisabledIdentityAdapter(): IdentityPort<FastifyRequest> {
   return { authenticate: async () => null };
 }
 
-export function createDevelopmentIdentityAdapter(): IdentityPort<FastifyRequest> {
+export function createDevelopmentIdentityAdapter(input?: {
+  readonly now?: () => Date;
+}): IdentityPort<FastifyRequest> {
   return {
     authenticate: async (request) => {
       const value = request.headers['x-glucora-dev-actor'];
       if (typeof value !== 'string' || !actorIdPattern.test(value)) return null;
-      return { id: value, kind: 'consumer' };
+      return {
+        id: value,
+        kind: 'consumer',
+        authenticatedAt: (input?.now?.() ?? new Date()).toISOString(),
+      };
     },
   };
 }
 
 export interface IdentityPlatformTokenVerifier {
-  verify(token: string): Promise<{ readonly subject: string } | null>;
+  verify(token: string): Promise<{
+    readonly subject: string;
+    readonly authenticatedAt?: string;
+  } | null>;
 }
 
 export interface IdentitySubjectResolver {
@@ -41,7 +50,15 @@ export function createIdentityPlatformIdentityAdapter(input: {
         const verified = await input.verifier.verify(token);
         if (!verified) return null;
         const id = await input.subjects.resolveConsumerId(verified.subject);
-        return id ? { id, kind: 'consumer' } : null;
+        return id
+          ? {
+              id,
+              kind: 'consumer',
+              ...(verified.authenticatedAt
+                ? { authenticatedAt: verified.authenticatedAt }
+                : {}),
+            }
+          : null;
       } catch {
         return null;
       }
@@ -49,7 +66,7 @@ export function createIdentityPlatformIdentityAdapter(input: {
   };
 }
 
-function validPastTimestamp(value: unknown, now: number) {
+function validPastTimestamp(value: unknown, now: number): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value <= now;
 }
 
@@ -82,7 +99,10 @@ export function createIdentityPlatformTokenVerifier(input: {
         !isFiniteFutureExpiration(payload, now)
       )
         return null;
-      return { subject: payload.sub };
+      return {
+        subject: payload.sub,
+        authenticatedAt: new Date(payload.auth_time * 1000).toISOString(),
+      };
     },
   };
 }

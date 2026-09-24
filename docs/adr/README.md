@@ -31,3 +31,7 @@ pelo próprio titular.
 ADR-060 foi aceita por Mateus Alves Bassane em 2026-09-24, com evidência
 `00001`, para hospedar a API do sandbox sintético em Render Free por um
 Blueprint de aplicação manual. A decisão não autoriza dados reais ou produção.
+
+ADR-061 foi aceita por Mateus Alves Bassane em 2026-09-24, com evidência
+`00001`, para entregar exportação JSON diretamente ao titular após autenticação
+recente, ownership e transição auditada para revisão.

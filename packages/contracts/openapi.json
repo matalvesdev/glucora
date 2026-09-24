@@ -2855,6 +2855,241 @@
         }
       }
     },
+    "/v1/privacy-requests/{id}/export": {
+      "post": {
+        "operationId": "downloadStructuredExport",
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^dsr_[A-Za-z0-9_-]{16,64}$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "schemaVersion",
+                    "privacyRequestId",
+                    "subjectUserId",
+                    "generatedAt",
+                    "sections"
+                  ],
+                  "properties": {
+                    "schemaVersion": {
+                      "type": "string",
+                      "enum": ["glucora-export/1"]
+                    },
+                    "privacyRequestId": {
+                      "pattern": "^dsr_[A-Za-z0-9_-]{16,64}$",
+                      "type": "string"
+                    },
+                    "subjectUserId": {
+                      "pattern": "^usr_[A-Za-z0-9_-]{16,64}$",
+                      "type": "string"
+                    },
+                    "generatedAt": {
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$",
+                      "type": "string"
+                    },
+                    "sections": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": ["sectionId", "records"],
+                        "properties": {
+                          "sectionId": {
+                            "pattern": "^[a-z][a-z0-9_]{2,63}$",
+                            "type": "string"
+                          },
+                          "records": {
+                            "type": "array",
+                            "items": {
+                              "additionalProperties": false,
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "subjectUserId",
+                                "resourceType",
+                                "resourceVersion",
+                                "provenanceRefs",
+                                "data"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "minLength": 1,
+                                  "maxLength": 128,
+                                  "type": "string"
+                                },
+                                "subjectUserId": {
+                                  "pattern": "^usr_[A-Za-z0-9_-]{16,64}$",
+                                  "type": "string"
+                                },
+                                "resourceType": {
+                                  "pattern": "^[a-z][a-z0-9_]{2,63}$",
+                                  "type": "string"
+                                },
+                                "resourceVersion": {
+                                  "minLength": 1,
+                                  "maxLength": 128,
+                                  "type": "string"
+                                },
+                                "provenanceRefs": {
+                                  "type": "array",
+                                  "items": {
+                                    "maxLength": 200,
+                                    "type": "string"
+                                  }
+                                },
+                                "data": {
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": ["code", "message", "request_id"],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/privacy-requests/{id}": {
       "get": {
         "operationId": "getPrivacyRequest",

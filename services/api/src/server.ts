@@ -43,6 +43,7 @@ try {
         }
       : {}),
     privacyRequests: database.privacyRequests,
+    exportSections: database.exportSections,
     ...(config.PRIVACY_REQUEST_RETENTION_POLICY_REF
       ? {
           privacyRequestPolicy: {

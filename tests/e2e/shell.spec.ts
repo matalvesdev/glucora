@@ -329,6 +329,22 @@ test('authenticated user can submit minimized privacy and support requests', asy
         }),
       }),
   );
+  await page.route(
+    '**/v1/privacy-requests/dsr_syntheticrequest0001/export',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: { 'cache-control': 'no-store' },
+        body: JSON.stringify({
+          schemaVersion: 'glucora-export/1',
+          privacyRequestId: 'dsr_syntheticrequest0001',
+          subjectUserId: 'usr_syntheticconsumer001',
+          generatedAt: '2026-01-03T00:00:00.000Z',
+          sections: [],
+        }),
+      }),
+  );
   await page.route('**/v1/support-requests', async (route) => {
     payloads.push(route.request().postDataJSON());
     await route.fulfill({
@@ -382,7 +398,14 @@ test('authenticated user can submit minimized privacy and support requests', asy
   await expect(page.getByRole('button', { name: 'Autorizar' })).toBeVisible();
   await expect(page.getByText('Exportação de dados')).toBeVisible();
   await expect(page.getByText('Em análise')).toBeVisible();
-  await page.getByRole('button', { name: 'Ver histórico' }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Baixar JSON' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe(
+    'glucora-export-dsr_syntheticrequest0001.json',
+  );
+  await page.getByRole('button', { name: 'Ver histórico' }).first().click();
   await expect(page.getByText('Pedido recebido')).toBeVisible();
   await page.getByLabel('Tipo de solicitação').selectOption('export');
   await page.getByRole('button', { name: 'Enviar solicitação' }).click();

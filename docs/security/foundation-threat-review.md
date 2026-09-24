@@ -20,6 +20,10 @@ The application now resolves an authenticated opaque actor against `identity.use
 
 - Canonical health records are user-scoped, versioned and provenance-linked; direct destructive mutation is blocked. Primary threats remain purpose misconfiguration, compromised consumer sessions and privileged database access.
 - Timeline is disposable and contains references/metadata rather than measurement values or free text. Rebuild uses a per-user lock. Projection staleness must remain visible before user exposure.
+- Structured export is restricted to the owning active account and requires an
+  identity-provider authentication time no older than ten minutes. It uses
+  parameterized subject queries, returns `no-store`, creates no public URL and
+  fails closed when identity time or export adapters are unavailable.
 - Report sharing is bound to one owner-owned artifact, opaque recipient, purpose and expiry. Revocation is checked for every future access. Recipient authentication and delivery links remain unimplemented because token leakage, forwarding and enumeration need a dedicated design/review.
 - Privacy requests use scoped lookup, optimistic versions, controlled reason codes and atomic audit. Fulfillment cannot be marked complete until every applicable store/vendor reports evidence.
 - AI execution denies R2+, validates authorization before context/provider access, requires versioned evidence and structured guards, and abstains safely. Prompt injection, provider data use and corpus poisoning remain blocked from release until real adapters/corpora have threat review and eval evidence.

@@ -40,6 +40,7 @@ import {
   PrivacyRequestListSchema,
   PrivacyRequestHistorySchema,
   PrivacyRequestSchema,
+  StructuredExportDocumentSchema,
   SupportRequestListSchema,
   SupportRequestSchema,
 } from '@glucora/contracts';
@@ -60,6 +61,7 @@ import type {
   SupportRequestCategory,
   UserAccountRepository,
   ShareGrantRepository,
+  DataExportSectionPort,
 } from '@glucora/domain';
 import {
   approvedManualGlucoseCatalog,
@@ -75,6 +77,7 @@ import {
   createNoopMetricSink,
   type MetricSink,
 } from '@glucora/observability';
+import { buildStructuredExportArtifact } from './modules/privacy/build-export-artifact';
 export interface AppDependencies {
   checkReadiness: () => Promise<void>;
   identity?: IdentityPort<import('fastify').FastifyRequest>;
@@ -84,6 +87,7 @@ export interface AppDependencies {
   consentDecisions?: ConsentDecisionRecorder;
   privacyRequests?: PrivacyRequestRepository;
   privacyRequestPolicy?: { readonly retentionPolicyRef: string };
+  exportSections?: readonly DataExportSectionPort[];
   supportRequests?: SupportRequestRepository;
   supportRequestPolicy?: { readonly retentionPolicyRef: string };
   observations?: ObservationRepository;
@@ -94,6 +98,7 @@ export interface AppDependencies {
   sharingPolicy?: { readonly retentionPolicyRef: string };
   logger?: ReturnType<typeof createLogger>;
   metrics?: MetricSink;
+  now?: () => Date;
 }
 
 function encodeConsentCursor(item: ConsentHistoryItem): string {
@@ -1498,6 +1503,118 @@ export function buildApp(deps: AppDependencies) {
           })),
           request_id: request.id,
         };
+      },
+    );
+    routes.post(
+      '/v1/privacy-requests/:id/export',
+      {
+        schema: {
+          operationId: 'downloadStructuredExport',
+          params: PrivacyRequestParamsSchema,
+          response: {
+            200: StructuredExportDocumentSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            404: ErrorSchema,
+            409: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const account = await deps.users?.findById(actor.id);
+        if (!account || account.status !== 'active')
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        const authenticatedAt = actor.authenticatedAt
+          ? Date.parse(actor.authenticatedAt)
+          : Number.NaN;
+        const now = (deps.now?.() ?? new Date()).getTime();
+        if (
+          !Number.isFinite(authenticatedAt) ||
+          authenticatedAt > now + 60_000 ||
+          now - authenticatedAt > 10 * 60_000
+        )
+          return reply.code(403).send({
+            code: 'RECENT_AUTHENTICATION_REQUIRED',
+            message: 'Entre novamente para exportar seus dados.',
+            request_id: request.id,
+          });
+        if (
+          !deps.privacyRequests ||
+          !deps.privacyRequestPolicy ||
+          !deps.exportSections?.length
+        )
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Exportação temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const { id } = request.params as { id: string };
+        let value = await deps.privacyRequests.findById(id, actor.id);
+        if (!value)
+          return reply.code(404).send({
+            code: 'NOT_FOUND',
+            message: 'Recurso não encontrado.',
+            request_id: request.id,
+          });
+        if (
+          value.kind !== 'export' ||
+          ![
+            'requested',
+            'identity_verification_required',
+            'in_review',
+          ].includes(value.status)
+        )
+          return reply.code(409).send({
+            code: 'EXPORT_NOT_AVAILABLE',
+            message: 'Este pedido não está disponível para exportação.',
+            request_id: request.id,
+          });
+        const occurredAt = new Date(now).toISOString();
+        if (value.status !== 'in_review') {
+          value = await deps.privacyRequests.transition({
+            requestId: value.id,
+            userId: actor.id,
+            expectedVersion: value.version,
+            event: {
+              id: `dse_${randomUUID().replaceAll('-', '')}`,
+              requestId: value.id,
+              userId: actor.id,
+              fromStatus: value.status,
+              toStatus: 'in_review',
+              reasonCode: 'recent_identity_verified',
+              occurredAt,
+            },
+            audit: {
+              id: `aud_${randomUUID().replaceAll('-', '')}`,
+              requestId: request.id,
+              retentionPolicyRef: deps.privacyRequestPolicy.retentionPolicyRef,
+              occurredAt,
+            },
+          });
+        }
+        const artifact = await buildStructuredExportArtifact({
+          request: value,
+          generatedAt: occurredAt,
+          sections: deps.exportSections,
+        });
+        reply.header(
+          'content-disposition',
+          `attachment; filename="${artifact.fileName}"`,
+        );
+        reply.header('cache-control', 'no-store');
+        return JSON.parse(new TextDecoder().decode(artifact.bytes)) as unknown;
       },
     );
     routes.get(

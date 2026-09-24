@@ -394,6 +394,42 @@ export const PrivacyRequestHistorySchema = Type.Object(
   },
   { additionalProperties: false },
 );
+
+export const StructuredExportDocumentSchema = Type.Object(
+  {
+    schemaVersion: Type.Literal('glucora-export/1'),
+    privacyRequestId: Type.String({ pattern: '^dsr_[A-Za-z0-9_-]{16,64}$' }),
+    subjectUserId: Type.String({ pattern: '^usr_[A-Za-z0-9_-]{16,64}$' }),
+    generatedAt: IsoTimestampSchema,
+    sections: Type.Array(
+      Type.Object(
+        {
+          sectionId: Type.String({ pattern: '^[a-z][a-z0-9_]{2,63}$' }),
+          records: Type.Array(
+            Type.Object(
+              {
+                id: Type.String({ minLength: 1, maxLength: 128 }),
+                subjectUserId: Type.String({
+                  pattern: '^usr_[A-Za-z0-9_-]{16,64}$',
+                }),
+                resourceType: Type.String({
+                  pattern: '^[a-z][a-z0-9_]{2,63}$',
+                }),
+                resourceVersion: Type.String({ minLength: 1, maxLength: 128 }),
+                provenanceRefs: Type.Array(Type.String({ maxLength: 200 })),
+                data: Type.Record(Type.String(), Type.Unknown()),
+              },
+              { additionalProperties: false },
+            ),
+          ),
+        },
+        { additionalProperties: false },
+      ),
+      { minItems: 1 },
+    ),
+  },
+  { additionalProperties: false },
+);
 const SupportCategorySchema = Type.Union([
   Type.Literal('account_access'),
   Type.Literal('privacy_rights'),

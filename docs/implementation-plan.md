@@ -165,6 +165,14 @@ G8 em fundação: a reconciliação revalida o recibo persistido mais recente de
 
 E5/G1 em fundação validada: gerador JSON estruturado aceita apenas pedido de exportação em revisão, agrega seções explícitas, preserva versões/provenance, bloqueia dados de outro titular e gera checksum determinístico, com testes sintéticos. ADR-033 está aceita; storage, criptografia, expiração, entrega, reautenticação e adapters reais continuam pendentes.
 
+ADR-061 entrega E5/G1 por geração direta ao próprio titular: a API exige
+autenticação com `auth_time` de até dez minutos, conta ativa e ownership,
+avança o pedido de forma auditada para `in_review` e agrega adapters PostgreSQL
+de conta, consentimento, observações versionadas, relatórios e pedidos de
+privacidade. A UI baixa o JSON com `no-store`. O pedido não é marcado como
+`fulfilled`, pois a resposta iniciada não comprova download concluído; storage,
+expiração persistida e evidência final continuam pendentes.
+
 G1/G3/G7 em API condicionada: POST/GET de solicitações de privacidade exigem autenticação, conta ativa, ownership, idempotência e validação runtime; o servidor deriva titular e estado. Sem referência explícita da política de retenção, novas criações são bloqueadas, mas status existente permanece legível. ADR-034 está aceita; identidade/política de produção, UI, verificação e fulfillment continuam pendentes.
 
 H5 em API/UI condicionada: POST/listagem de suporte exigem autenticação, conta ativa, idempotência, categoria controlada, ownership e cursor opaco; texto livre e campos adicionais são rejeitados. A interface lista os próprios pedidos, pagina e a atualiza após criação válida. Sem referência explícita de retenção, novas entradas são bloqueadas, mas registros existentes permanecem legíveis. ADR-035 e ADR-040 estão aceitas; roteamento, operador, triagem, SLA e fornecedor continuam pendentes.

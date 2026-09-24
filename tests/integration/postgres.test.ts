@@ -10,6 +10,7 @@ import { buildApp } from '../../services/api/src/app';
 import { createDevelopmentIdentityAdapter } from '../../services/api/src/modules/identity/identity-adapter';
 import { createLogger } from '../../packages/observability/src/index';
 import { finalizeVerifiedDeletion } from '../../packages/domain/src/index';
+import { buildStructuredExportArtifact } from '../../services/api/src/modules/privacy/build-export-artifact';
 describe('real PostgreSQL migrations and readiness', () => {
   it('applies once, checks history, rolls back failed DDL and detects schema availability', async () => {
     const connectionString = process.env.TEST_DATABASE_URL;
@@ -895,6 +896,37 @@ describe('real PostgreSQL migrations and readiness', () => {
             },
           });
           expect(inReview).toMatchObject({ status: 'in_review', version: 2 });
+          const exportArtifact = await buildStructuredExportArtifact({
+            request: inReview,
+            generatedAt: '2026-01-06T00:00:00.000Z',
+            sections: ready.exportSections,
+          });
+          const exportDocument = JSON.parse(
+            new TextDecoder().decode(exportArtifact.bytes),
+          ) as {
+            sections: readonly {
+              sectionId: string;
+              records: readonly { subjectUserId: string }[];
+            }[];
+          };
+          expect(
+            exportDocument.sections.map(({ sectionId }) => sectionId),
+          ).toEqual([
+            'account',
+            'consents',
+            'consultation_reports',
+            'observations',
+            'privacy_requests',
+          ]);
+          expect(
+            exportDocument.sections.flatMap(({ records }) => records),
+          ).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({
+                subjectUserId: 'usr_syntheticconsumer001',
+              }),
+            ]),
+          );
           await expect(
             ready.privacyRequests.transition({
               requestId: privacyRequest.id,

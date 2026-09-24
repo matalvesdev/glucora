@@ -18,6 +18,7 @@ import { createPostgresRetentionHoldRepository } from './modules/privacy/retenti
 import { createPostgresShareGrantRepository } from './modules/sharing/share-grant-repository';
 import { createPostgresOutputContestationRepository } from './modules/feedback/output-contestation-repository';
 import { createPostgresSupportRequestRepository } from './modules/support/support-request-repository';
+import { createPostgresExportSections } from './modules/privacy/postgres-export-sections';
 export function createDatabase(connectionString: string) {
   const pool = new pg.Pool({
     connectionString,
@@ -50,6 +51,7 @@ export function createDatabase(connectionString: string) {
   const shareGrants = createPostgresShareGrantRepository(pool);
   const outputContestations = createPostgresOutputContestationRepository(pool);
   const supportRequests = createPostgresSupportRequestRepository(pool);
+  const exportSections = createPostgresExportSections(pool);
   return {
     async checkReadiness() {
       const result = await pool.query<{ version: string }>(
@@ -75,5 +77,6 @@ export function createDatabase(connectionString: string) {
     shareGrants,
     outputContestations,
     supportRequests,
+    exportSections,
   };
 }
