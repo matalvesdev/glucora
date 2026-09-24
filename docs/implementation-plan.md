@@ -79,6 +79,10 @@ idempotência, referências/versionamento e auditoria. Perguntas, notas,
 exportação, compartilhamento, IA e acesso profissional seguem fora deste
 slice.
 
+ADR-056 aceita um checklist fechado de perguntas não clínicas ligado ao
+relatório próprio. Notas livres, geração por IA, aconselhamento,
+compartilhamento e exportação continuam fora de escopo.
+
 E3/E7 em fundação: relatório determinístico imutável preserva snapshot, referências/versões, idempotência e auditoria atômica. ADR-023 está aceita; retenção real, exportação, compartilhamento e exposição continuam condicionados.
 
 E3/E7 em fundação: o snapshot de relatório é validado antes da persistência; período, contagens, limitações, referências/versionamento e tempo de criação precisam ser coerentes. O controle não habilita exportação, compartilhamento ou exposição pública.

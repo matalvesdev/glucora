@@ -10,6 +10,7 @@ import { createPostgresAuditRepository } from './modules/audit/audit-repository'
 import { createPostgresObservationRepository } from './modules/measurements/observation-repository';
 import { createPostgresTimelineRepository } from './modules/timeline/timeline-repository';
 import { createPostgresConsultationReportRepository } from './modules/consultation/consultation-report-repository';
+import { createPostgresConsultationQuestionRepository } from './modules/consultation/consultation-question-repository';
 import { createPostgresPrivacyRequestRepository } from './modules/privacy/privacy-request-repository';
 import { createPostgresCanonicalHealthDeletionTarget } from './modules/privacy/canonical-health-deletion-target';
 import { createPostgresDeletionTargetReceiptRepository } from './modules/privacy/deletion-target-receipt-repository';
@@ -38,6 +39,8 @@ export function createDatabase(connectionString: string) {
   const observations = createPostgresObservationRepository(pool);
   const timeline = createPostgresTimelineRepository(pool);
   const consultationReports = createPostgresConsultationReportRepository(pool);
+  const consultationQuestions =
+    createPostgresConsultationQuestionRepository(pool);
   const privacyRequests = createPostgresPrivacyRequestRepository(pool);
   const canonicalHealthDeletionTarget =
     createPostgresCanonicalHealthDeletionTarget(pool);
@@ -64,6 +67,7 @@ export function createDatabase(connectionString: string) {
     observations,
     timeline,
     consultationReports,
+    consultationQuestions,
     privacyRequests,
     canonicalHealthDeletionTarget,
     deletionTargetReceipts,

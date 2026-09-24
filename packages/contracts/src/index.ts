@@ -280,6 +280,37 @@ export const ConsultationReportParamsSchema = Type.Object(
   { id: Type.String({ pattern: '^rpt_[A-Za-z0-9_-]{16,64}$' }) },
   { additionalProperties: false },
 );
+export const ConsultationQuestionBodySchema = Type.Object(
+  {
+    question_key: Type.Union([
+      Type.Literal('review_records'),
+      Type.Literal('discuss_routine'),
+      Type.Literal('clarify_next_steps'),
+    ]),
+    action: Type.Union([Type.Literal('added'), Type.Literal('removed')]),
+  },
+  { additionalProperties: false },
+);
+export const ConsultationQuestionSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^rqe_[A-Za-z0-9_-]{16,64}$' }),
+    question_key: Type.Union([
+      Type.Literal('review_records'),
+      Type.Literal('discuss_routine'),
+      Type.Literal('clarify_next_steps'),
+    ]),
+    version: Type.Integer({ minimum: 1 }),
+    occurred_at: IsoTimestampSchema,
+  },
+  { additionalProperties: false },
+);
+export const ConsultationQuestionListSchema = Type.Object(
+  {
+    items: Type.Array(ConsultationQuestionSchema, { maxItems: 3 }),
+    request_id: RequestIdSchema,
+  },
+  { additionalProperties: false },
+);
 export const PrivacyRequestParamsSchema = Type.Object(
   { id: Type.String({ pattern: '^dsr_[A-Za-z0-9_-]{16,64}$' }) },
   { additionalProperties: false },

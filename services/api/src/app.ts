@@ -12,6 +12,9 @@ import {
   CreateConsultationReportBodySchema,
   ConsultationReportParamsSchema,
   ConsultationReportSchema,
+  ConsultationQuestionBodySchema,
+  ConsultationQuestionListSchema,
+  ConsultationQuestionSchema,
   CorrectManualGlucoseObservationBodySchema,
   RecordConsentDecisionBodySchema,
   CreatePrivacyRequestBodySchema,
@@ -41,6 +44,7 @@ import type {
   ConsentRepository,
   ObservationRepository,
   ConsultationReportRepository,
+  ConsultationQuestionRepository,
   TimelineRepository,
   IdentityPort,
   PrivacyRequestRepository,
@@ -78,6 +82,7 @@ export interface AppDependencies {
   observations?: ObservationRepository;
   timeline?: TimelineRepository;
   consultationReports?: ConsultationReportRepository;
+  consultationQuestions?: ConsultationQuestionRepository;
   logger?: ReturnType<typeof createLogger>;
   metrics?: MetricSink;
 }
@@ -878,6 +883,195 @@ export function buildApp(deps: AppDependencies) {
           counts_by_source_type: value.summary.countsBySourceType,
           limitations: value.summary.limitations,
           created_at: value.createdAt,
+          request_id: request.id,
+        };
+      },
+    );
+    routes.post(
+      '/v1/consultation-reports/:id/questions',
+      {
+        schema: {
+          operationId: 'recordOwnConsultationQuestion',
+          headers: IdempotencyHeadersSchema,
+          params: ConsultationReportParamsSchema,
+          body: ConsultationQuestionBodySchema,
+          response: {
+            201: ConsultationQuestionSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            404: ErrorSchema,
+            409: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const now = new Date().toISOString();
+        const account = await deps.users?.findById(actor.id);
+        const purpose = (await deps.consentPurposes?.listPublished(now))?.find(
+          (item) => item.purposeKey === 'self_care_health_data',
+        );
+        const consent = purpose
+          ? await deps.consents?.current(actor.id, purpose.id)
+          : null;
+        if (
+          !authorizeConsumerCapability({
+            actor,
+            account: account ?? null,
+            subjectUserId: actor.id,
+            purpose: purpose ?? null,
+            currentConsent: consent ?? null,
+            evaluatedAt: now,
+          }).allowed
+        )
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (
+          !deps.consultationReports ||
+          !deps.consultationQuestions ||
+          !purpose
+        )
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Checklist temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const reportId = (request.params as { id: string }).id;
+        if (!(await deps.consultationReports.findById(reportId, actor.id)))
+          return reply.code(404).send({
+            code: 'NOT_FOUND',
+            message: 'Relatório não encontrado.',
+            request_id: request.id,
+          });
+        const body = request.body as {
+          question_key:
+            'review_records' | 'discuss_routine' | 'clarify_next_steps';
+          action: 'added' | 'removed';
+        };
+        try {
+          const value = await deps.consultationQuestions.record({
+            event: {
+              id: `rqe_${randomUUID().replaceAll('-', '')}`,
+              reportId,
+              userId: actor.id,
+              questionKey: body.question_key,
+              action: body.action,
+              version: 1,
+              occurredAt: now,
+            },
+            idempotencyKey: (request.headers as { 'idempotency-key': string })[
+              'idempotency-key'
+            ],
+            requestHash: createHash('sha256')
+              .update(`${reportId}|${body.question_key}|${body.action}`)
+              .digest('hex'),
+            audit: {
+              id: `aud_${randomUUID().replaceAll('-', '')}`,
+              requestId: request.id,
+              retentionPolicyRef: purpose.retentionPolicyRef,
+              occurredAt: now,
+            },
+          });
+          return reply.code(201).send({
+            id: value.id,
+            question_key: value.questionKey,
+            version: value.version,
+            occurred_at: value.occurredAt,
+          });
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === 'Idempotency key reused'
+          )
+            return reply.code(409).send({
+              code: 'IDEMPOTENCY_CONFLICT',
+              message: 'A chave de idempotência já foi utilizada.',
+              request_id: request.id,
+            });
+          throw error;
+        }
+      },
+    );
+    routes.get(
+      '/v1/consultation-reports/:id/questions',
+      {
+        schema: {
+          operationId: 'listOwnConsultationQuestions',
+          params: ConsultationReportParamsSchema,
+          response: {
+            200: ConsultationQuestionListSchema,
+            401: ErrorSchema,
+            403: ErrorSchema,
+            404: ErrorSchema,
+            503: ErrorSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await deps.identity?.authenticate(request);
+        if (!actor)
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
+        const now = new Date().toISOString();
+        const account = await deps.users?.findById(actor.id);
+        const purpose = (await deps.consentPurposes?.listPublished(now))?.find(
+          (item) => item.purposeKey === 'self_care_health_data',
+        );
+        const consent = purpose
+          ? await deps.consents?.current(actor.id, purpose.id)
+          : null;
+        if (
+          !authorizeConsumerCapability({
+            actor,
+            account: account ?? null,
+            subjectUserId: actor.id,
+            purpose: purpose ?? null,
+            currentConsent: consent ?? null,
+            evaluatedAt: now,
+          }).allowed
+        )
+          return reply.code(403).send({
+            code: 'ACCESS_DENIED',
+            message: 'Acesso não autorizado.',
+            request_id: request.id,
+          });
+        if (!deps.consultationReports || !deps.consultationQuestions)
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Checklist temporariamente indisponível.',
+            request_id: request.id,
+          });
+        const reportId = (request.params as { id: string }).id;
+        if (!(await deps.consultationReports.findById(reportId, actor.id)))
+          return reply.code(404).send({
+            code: 'NOT_FOUND',
+            message: 'Relatório não encontrado.',
+            request_id: request.id,
+          });
+        const items = await deps.consultationQuestions.listSelected(
+          reportId,
+          actor.id,
+        );
+        return {
+          items: items.map((item) => ({
+            id: item.id,
+            question_key: item.questionKey,
+            version: item.version,
+            occurred_at: item.occurredAt,
+          })),
           request_id: request.id,
         };
       },

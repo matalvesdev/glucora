@@ -11,10 +11,12 @@ export function ConsultationReport() {
   const [to, setTo] = useState('');
   const [message, setMessage] = useState('');
   const [report, setReport] = useState<{
+    id: string;
     period: { from: string; to: string };
     total_records: number;
     limitations: string[];
   } | null>(null);
+  const [questions, setQuestions] = useState<string[]>([]);
   useEffect(() => {
     void fetch('/v1/me', { credentials: 'include', cache: 'no-store' })
       .then(async (response) => {
@@ -59,6 +61,7 @@ export function ConsultationReport() {
       if (!response.ok || !Value.Check(ConsultationReportSchema, body))
         throw new Error('invalid');
       const value = body as {
+        id: string;
         period: { from: string; to: string };
         total_records: number;
         limitations: string[];
@@ -67,6 +70,33 @@ export function ConsultationReport() {
       setMessage('Resumo criado sem interpretação clínica.');
     } catch {
       setMessage('Não foi possível criar o resumo agora.');
+    }
+  }
+  async function toggleQuestion(questionKey: string) {
+    if (!report) return;
+    const action = questions.includes(questionKey) ? 'removed' : 'added';
+    try {
+      const response = await fetch(
+        `/v1/consultation-reports/${report.id}/questions`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': crypto.randomUUID(),
+          },
+          body: JSON.stringify({ question_key: questionKey, action }),
+        },
+      );
+      if (!response.ok) throw new Error('invalid');
+      setQuestions((current) =>
+        action === 'added'
+          ? [...current, questionKey]
+          : current.filter((item) => item !== questionKey),
+      );
+    } catch {
+      setMessage('Não foi possível atualizar suas perguntas agora.');
     }
   }
   return (
@@ -138,6 +168,34 @@ export function ConsultationReport() {
                 registros não prova ausência de eventos; contagens não medem
                 saúde ou controle.
               </p>
+              <fieldset className="mt-6">
+                <legend className="font-semibold">
+                  Perguntas para levar à consulta
+                </legend>
+                <p className="mt-2 text-sm text-stone-600">
+                  Escolha temas para conversar. Estas opções não são
+                  recomendações.
+                </p>
+                {(
+                  [
+                    ['review_records', 'Revisar meus registros'],
+                    ['discuss_routine', 'Conversar sobre minha rotina'],
+                    ['clarify_next_steps', 'Esclarecer próximos passos'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label
+                    key={key}
+                    className="mt-3 flex items-center gap-3 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={questions.includes(key)}
+                      onChange={() => void toggleQuestion(key)}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </fieldset>
             </section>
           ) : null}
         </div>
