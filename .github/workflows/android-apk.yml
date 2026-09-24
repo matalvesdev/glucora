@@ -1,0 +1,38 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'apk-*'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @glucora/web build
+      - run: pnpm --filter @glucora/mobile exec cap add android
+      - run: pnpm --filter @glucora/mobile exec cap sync android
+      - run: pnpm --filter @glucora/mobile exec cap copy android
+      - run: ./apps/mobile/android/gradlew --no-daemon --stacktrace assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: glucora-apk-0.0.1-beta-stable-debug
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
