@@ -5,6 +5,7 @@ import {
   CreateShareGrantBodySchema,
   MeSchema,
   ShareGrantSchema,
+  ShareGrantListSchema,
 } from '@glucora/contracts';
 import { Button } from '@glucora/ui';
 
@@ -21,6 +22,9 @@ export function ConsultationReport() {
     total_records: number;
     limitations: string[];
   } | null>(null);
+  const [existingShares, setExistingShares] = useState<
+    Array<{ id: string; status: 'active' | 'revoked'; expires_at: string }>
+  >([]);
   const [questions, setQuestions] = useState<string[]>([]);
   const [recipientRef, setRecipientRef] = useState('');
   const [purposeVersionId, setPurposeVersionId] = useState('');
@@ -45,6 +49,20 @@ export function ConsultationReport() {
       })
       .catch(() => setAccess('error'));
   }, []);
+  useEffect(() => {
+    if (access !== 'authenticated') return;
+    void fetch('/v1/shares?limit=50', {
+      credentials: 'include',
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        const body: unknown = await response.json();
+        if (response.ok && Value.Check(ShareGrantListSchema, body)) {
+          setExistingShares((body as { items: typeof existingShares }).items);
+        }
+      })
+      .catch(() => undefined);
+  }, [access]);
   async function create(event: FormEvent) {
     event.preventDefault();
     if (
@@ -155,6 +173,10 @@ export function ConsultationReport() {
         expires_at: string;
       };
       setShare(value);
+      setExistingShares((current) => [
+        value,
+        ...current.filter((item) => item.id !== value.id),
+      ]);
       setMessage(
         'Compartilhamento criado. A entrega ao destinatário ainda não está habilitada.',
       );
@@ -179,6 +201,11 @@ export function ConsultationReport() {
       if (!response.ok || !Value.Check(ShareGrantSchema, body))
         throw new Error('invalid');
       setShare(body as typeof share);
+      setExistingShares((current) =>
+        current.map((item) =>
+          item.id === share.id ? { ...item, status: 'revoked' } : item,
+        ),
+      );
       setMessage('Compartilhamento revogado.');
     } catch {
       setMessage('Não foi possível revogar o compartilhamento agora.');
@@ -325,6 +352,16 @@ export function ConsultationReport() {
                     Estado: {share.status}; expira em{' '}
                     {new Date(share.expires_at).toLocaleString()}.
                   </p>
+                ) : null}
+                {existingShares.length > 0 ? (
+                  <ul className="mt-4 space-y-2 text-sm text-stone-600">
+                    {existingShares.map((item) => (
+                      <li key={item.id}>
+                        Grant {item.id}: {item.status}; expira em{' '}
+                        {new Date(item.expires_at).toLocaleString()}.
+                      </li>
+                    ))}
+                  </ul>
                 ) : null}
               </fieldset>
             </section>
