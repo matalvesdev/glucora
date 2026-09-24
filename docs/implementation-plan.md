@@ -71,7 +71,7 @@ D2–D4/D7 em fundação interna: leitura exige autorização completa antes do 
 
 D2–D4/D7 em fundação interna: parâmetros de consulta, período e cursor opaco são validados antes da consulta PostgreSQL; filtros malformados são rejeitados sem atingir a projeção.
 
-Iniciativa E iniciada: E1–E3 possuem composição determinística interna de inventário por período, categoria e origem, sempre acompanhada de limitações explícitas. O registro de risco propõe R0; persistência, perguntas, exportação, compartilhamento e exposição aguardam gates.
+Iniciativa E avançada: E1–E4 possuem composição determinística interna de inventário por período, categoria e origem, relatório próprio e checklist fechado de perguntas não clínicas, sempre acompanhados de limitações explícitas. O registro de risco propõe R0; exportação, compartilhamento e exposição continuam aguardando gates.
 
 ADR-055 aceita a criação e consulta própria de relatório determinístico de
 preparação de consulta, com período explícito, consentimento vigente,
