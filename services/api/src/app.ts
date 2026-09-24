@@ -2126,21 +2126,17 @@ export function buildApp(deps: AppDependencies) {
       async (request, reply) => {
         const actor = await deps.identity?.authenticate(request);
         if (!actor)
-          return reply
-            .code(401)
-            .send({
-              code: 'UNAUTHENTICATED',
-              message: 'Autenticação necessária.',
-              request_id: request.id,
-            });
+          return reply.code(401).send({
+            code: 'UNAUTHENTICATED',
+            message: 'Autenticação necessária.',
+            request_id: request.id,
+          });
         if (!deps.shareGrants)
-          return reply
-            .code(503)
-            .send({
-              code: 'CAPABILITY_UNAVAILABLE',
-              message: 'Compartilhamento temporariamente indisponível.',
-              request_id: request.id,
-            });
+          return reply.code(503).send({
+            code: 'CAPABILITY_UNAVAILABLE',
+            message: 'Compartilhamento temporariamente indisponível.',
+            request_id: request.id,
+          });
         const query = request.query as { limit?: number; cursor?: string };
         let before: string | undefined;
         if (query.cursor) {
@@ -2156,13 +2152,11 @@ export function buildApp(deps: AppDependencies) {
               throw new Error('invalid');
             before = query.cursor;
           } catch {
-            return reply
-              .code(400)
-              .send({
-                code: 'INVALID_CURSOR',
-                message: 'Cursor inválido.',
-                request_id: request.id,
-              });
+            return reply.code(400).send({
+              code: 'INVALID_CURSOR',
+              message: 'Cursor inválido.',
+              request_id: request.id,
+            });
           }
         }
         const limit = query.limit ?? 20;
@@ -2176,21 +2170,19 @@ export function buildApp(deps: AppDependencies) {
             JSON.stringify({ grantedAt: value.grantedAt, id: value.id }),
           ).toString('base64url');
         return {
-          items: values
-            .slice(0, limit)
-            .map((value) => ({
-              id: value.id,
-              resource_type: value.resourceType,
-              resource_id: value.resourceId,
-              recipient_ref: value.recipientRef,
-              purpose_version_id: value.purposeVersionId,
-              status: value.status,
-              version: value.version,
-              granted_at: value.grantedAt,
-              expires_at: value.expiresAt,
-              revoked_at: value.revokedAt,
-              request_id: request.id,
-            })),
+          items: values.slice(0, limit).map((value) => ({
+            id: value.id,
+            resource_type: value.resourceType,
+            resource_id: value.resourceId,
+            recipient_ref: value.recipientRef,
+            purpose_version_id: value.purposeVersionId,
+            status: value.status,
+            version: value.version,
+            granted_at: value.grantedAt,
+            expires_at: value.expiresAt,
+            revoked_at: value.revokedAt,
+            request_id: request.id,
+          })),
           next_cursor: next ? encode(next) : null,
           request_id: request.id,
         };
