@@ -12,6 +12,8 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      HAS_ANDROID_SIGNING_SECRETS: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -41,3 +43,34 @@ jobs:
         with:
           name: glucora-apk-0.0.1-beta-stable-debug
           path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk*
+      - name: Decode release keystore
+        if: env.HAS_ANDROID_SIGNING_SECRETS == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/glucora-signing"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/glucora-signing/release.keystore"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      - name: Build signed release APK
+        if: env.HAS_ANDROID_SIGNING_SECRETS == 'true'
+        run: |
+          ./gradlew --no-daemon --stacktrace assembleRelease \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/glucora-signing/release.keystore" \
+            -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
+        working-directory: apps/mobile/android
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Generate signed release APK checksum
+        if: env.HAS_ANDROID_SIGNING_SECRETS == 'true'
+        run: sha256sum apps/mobile/android/app/build/outputs/apk/release/app-release.apk > apps/mobile/android/app/build/outputs/apk/release/app-release.apk.sha256
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_ANDROID_SIGNING_SECRETS == 'true'
+        with:
+          name: glucora-apk-0.0.1-beta-stable-release-signed
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk*
+      - name: Release signing skipped
+        if: env.HAS_ANDROID_SIGNING_SECRETS != 'true'
+        run: echo "Signed release APK skipped because one or more Android signing secrets are missing."
