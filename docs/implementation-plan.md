@@ -103,6 +103,9 @@ sintéticos. GitHub Actions, Cloudflare Pages e Supabase Free são opções de
 desenvolvimento/piloto técnico; a fundação GCP da ADR-050 permanece a opção de
 produção e exige seus próprios gates operacionais.
 
+ADR-059 aceita Capacitor como casca Android do MVP. O repositório ainda não
+contém SDK/Gradle/keystore nem APK; o build permanece um gate de release.
+
 Iniciativa F iniciada: F1/F2/F6/F9 possuem registry e gateway provider-neutral com pipeline fail-closed de risco → auth/consent → evidência → provider → schema → guard → fallback. ADR-026 está aceita; nenhuma capability real está ativa.
 
 F1 em fundação: o registry valida ID, intended use, risco, bundle, responsável, corpus, evidência mínima e tools allowlisted antes de ativar uma capability. Não há capability real nem provider selecionado.

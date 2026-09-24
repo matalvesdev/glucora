@@ -10,3 +10,7 @@ evidência de estabilidade para declarar.
 O próximo gate para criar o APK é escolher e registrar a casca Android, gerar
 um build assinado de teste, executar smoke/E2E contra sandbox sintético e
 publicar o checksum. Isso não autoriza beta clínico nem dados reais.
+
+Na máquina atual não há Java, Gradle ou Android SDK/ADB detectáveis. Portanto
+não é possível gerar ou validar um APK local neste momento; o status permanece
+`NOT_BUILT`.
