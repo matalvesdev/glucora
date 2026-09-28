@@ -11,6 +11,7 @@ const requiredFiles = [
   'infrastructure/gcp/terraform.tfvars.example',
   'render.yaml',
   '.github/workflows/sandbox-health.yml',
+  '.github/workflows/codeql.yml',
   'scripts/check-sandbox-health.mjs',
 ];
 
@@ -27,6 +28,7 @@ const versions = byFile.get('infrastructure/gcp/versions.tf');
 const readme = byFile.get('infrastructure/gcp/README.md');
 const render = byFile.get('render.yaml');
 const sandboxMonitor = byFile.get('.github/workflows/sandbox-health.yml');
+const codeql = byFile.get('.github/workflows/codeql.yml');
 const sandboxHealthScript = byFile.get('scripts/check-sandbox-health.mjs');
 
 const expectations = [
@@ -61,6 +63,15 @@ const expectations = [
   [sandboxHealthScript, "redirect: 'error'", 'redirect rejection'],
   [sandboxHealthScript, "'/v1/health'", 'liveness monitor'],
   [sandboxHealthScript, "'/v1/ready'", 'readiness monitor'],
+  [codeql, 'security-events: write', 'CodeQL result permission'],
+  [codeql, 'languages: javascript-typescript', 'TypeScript SAST language'],
+  [codeql, 'queries: security-extended', 'extended security query suite'],
+  [codeql, 'timeout-minutes: 15', 'bounded CodeQL runtime'],
+  [
+    codeql,
+    'github/codeql-action/init@7999b86c43a865dc79d8923397f35af22de63401',
+    'pinned CodeQL action',
+  ],
 ];
 
 for (const [content, expected, label] of expectations) {

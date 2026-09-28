@@ -8,6 +8,10 @@ Scope: public availability probes and a static shell; no health data storage, id
 - Configuration errors report field names only. Secrets are local, generated and ignored. Startup failures have fixed messages.
 - Operational ledger uses parameters, schema privilege revocation, advisory lock and transaction; migration runner account is separate in concept from the production runtime role.
 - Local development database account is privileged for disposable testing. Production least-privilege roles/TLS/secret store require the deployment ADR and must be delivered before sensitive data.
+- The public repository runs pinned CodeQL `security-extended` analysis for
+  JavaScript and TypeScript on main, pull requests and a weekly schedule. This
+  complements secret and dependency scans; DAST remains tied to an actually
+  deployed sandbox endpoint.
 - Authentication and authorization are not simulated. No patient-facing capability exists; deny-by-default is absence of business routes.
 - No analytics, remote fonts, ad pixels, AI calls or service-worker health caching.
   Residual risks: internet-facing abuse/rate limiting and edge TLS deployment, auth/CSRF, production roles, metrics/tracing exporter, external security review and clinical/privacy gates are future requirements, not completed controls.

@@ -21,6 +21,12 @@ A aprovação deste gate de engenharia não significa aprovação dos gates clí
 
 H6: a varredura de segredos no CI executa o binário oficial Gitleaks com versão e checksum fixos sobre o histórico Git, sem depender da licença da GitHub Action. A validação de checksum falha antes da execução caso o artefato não corresponda ao release aprovado.
 
+H6 avançado pela ADR-066: o repositório público executa CodeQL com consultas
+`security-extended` para JavaScript e TypeScript em push, pull request e agenda
+semanal, com permissões mínimas e ações fixadas por commit. Gitleaks, verificação
+local de padrões e auditoria de dependências continuam como controles
+complementares; DAST aguarda um sandbox implantado.
+
 ## Sequência seguinte
 
 Registro de decisão: ADR-013 a ADR-041 foram aceitos por Mateus Alves Bassane em 2026-09-10, com evidência `00001`. As referências históricas a `PROPOSED` nas entradas abaixo descrevem o estado no momento daquele slice e são substituídas por este registro; limites que os ADRs mantêm abertos continuam abertos até uma decisão específica posterior.
