@@ -59,3 +59,7 @@ repositório público, com permissões mínimas e ações fixadas por commit.
 ADR-067 foi aceita por Mateus Alves Bassane em 2026-09-28, com evidência
 `00001`, para limitar requisições por instância na API do sandbox, preservando
 somente os probes de saúde e mantendo proteção distribuída como gate de produção.
+
+ADR-068 foi aceita por Mateus Alves Bassane em 2026-09-28, com evidência
+`00001`, para habilitar alertas e pull requests de segurança do Dependabot com
+agenda e limites versionados para npm/pnpm e GitHub Actions.

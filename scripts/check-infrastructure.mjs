@@ -12,6 +12,7 @@ const requiredFiles = [
   'render.yaml',
   '.github/workflows/sandbox-health.yml',
   '.github/workflows/codeql.yml',
+  '.github/dependabot.yml',
   'scripts/check-sandbox-health.mjs',
 ];
 
@@ -29,6 +30,7 @@ const readme = byFile.get('infrastructure/gcp/README.md');
 const render = byFile.get('render.yaml');
 const sandboxMonitor = byFile.get('.github/workflows/sandbox-health.yml');
 const codeql = byFile.get('.github/workflows/codeql.yml');
+const dependabot = byFile.get('.github/dependabot.yml');
 const sandboxHealthScript = byFile.get('scripts/check-sandbox-health.mjs');
 
 const expectations = [
@@ -73,6 +75,14 @@ const expectations = [
     'github/codeql-action/init@7999b86c43a865dc79d8923397f35af22de63401',
     'pinned CodeQL action',
   ],
+  [dependabot, 'package-ecosystem: npm', 'npm dependency monitoring'],
+  [
+    dependabot,
+    'package-ecosystem: github-actions',
+    'GitHub Actions dependency monitoring',
+  ],
+  [dependabot, 'open-pull-requests-limit: 5', 'bounded dependency updates'],
+  [dependabot, 'interval: weekly', 'weekly dependency review'],
 ];
 
 for (const [content, expected, label] of expectations) {

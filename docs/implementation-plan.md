@@ -34,6 +34,11 @@ deploy de produção. O contrato OpenAPI publica a resposta segura `429` em toda
 rota limitada e o gerador bloqueia divergências entre as exceções do runtime e
 as do contrato.
 
+H6 avançado pela ADR-068: alertas e correções por pull request do Dependabot
+estão habilitados no repositório público, com varredura semanal versionada de
+npm/pnpm e GitHub Actions. Não há merge automático; o CI e a revisão continuam
+obrigatórios.
+
 ## Sequência seguinte
 
 Registro de decisão: ADR-013 a ADR-041 foram aceitos por Mateus Alves Bassane em 2026-09-10, com evidência `00001`. As referências históricas a `PROPOSED` nas entradas abaixo descrevem o estado no momento daquele slice e são substituídas por este registro; limites que os ADRs mantêm abertos continuam abertos até uma decisão específica posterior.

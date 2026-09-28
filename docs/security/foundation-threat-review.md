@@ -15,6 +15,9 @@ Scope: public availability probes and a static shell; no health data storage, id
 - API routes are rate limited per process and remote address; health and
   readiness probes are the only exemptions. Distributed edge enforcement and
   trusted-proxy review remain production deployment gates.
+- Dependabot alerts and security-fix pull requests are enabled for the public
+  repository. Weekly npm/pnpm and GitHub Actions updates are bounded and never
+  merged automatically; Foundation CI and CodeQL remain required evidence.
 - Authentication and authorization are not simulated. No patient-facing capability exists; deny-by-default is absence of business routes.
 - No analytics, remote fonts, ad pixels, AI calls or service-worker health caching.
   Residual risks: internet-facing abuse/rate limiting and edge TLS deployment, auth/CSRF, production roles, metrics/tracing exporter, external security review and clinical/privacy gates are future requirements, not completed controls.
