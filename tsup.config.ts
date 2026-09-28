@@ -15,6 +15,7 @@ export default defineConfig({
     'fastify',
     '@fastify/swagger',
     '@fastify/helmet',
+    '@fastify/rate-limit',
     'pg',
     'pino',
     'zod',
