@@ -97,6 +97,10 @@ ADR-057 aceita e o código entrega a gestão autenticada pelo titular de criaç�
 listagem paginada, consulta e revogação versionada de grants próprios, com
 controles e histórico na tela de preparação de consulta. O slice não habilita
 delivery, identidade do destinatário, download ou acesso de terceiros.
+A interface resolve a finalidade publicada de autocuidado pelo contrato e só
+habilita o grant quando a decisão atual está `granted`; o titular não precisa
+informar identificadores internos. A jornada de relatório, checklist, criação e
+revogação do grant é exercitada no navegador com dados sintéticos.
 
 ADR-058 aceita uma infraestrutura gratuita somente para sandbox com dados
 sintéticos. GitHub Actions, Cloudflare Pages e Supabase Free são opções de

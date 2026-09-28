@@ -172,6 +172,201 @@ test('authenticated user filters the own timeline with closed parameters', async
   expect(requested).not.toContain('decimal');
 });
 
+test('authenticated user prepares a report and controls its share grant', async ({
+  page,
+}) => {
+  const payloads: Array<{ path: string; body: unknown }> = [];
+  const requestId = '123e4567-e89b-42d3-a456-426614174000';
+  await page.route('**/v1/me', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'usr_syntheticconsumer001',
+        kind: 'consumer',
+        status: 'active',
+        locale: 'pt-BR',
+        timezone: 'America/Sao_Paulo',
+        created_at: '2026-01-01T00:00:00.000Z',
+        updated_at: '2026-01-01T00:00:00.000Z',
+        request_id: requestId,
+      }),
+    }),
+  );
+  await page.route('**/v1/consent-purposes', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [
+          {
+            id: 'pur_syntheticpurpose001',
+            purpose_key: 'self_care_health_data',
+            version: 1,
+            title: 'Autocuidado com dados de saúde',
+            notice_text: 'Finalidade sintética aprovada para o teste.',
+            legal_basis_ref: 'LGPD art. 11, I',
+            retention_policy_ref: 'synthetic-retention-policy',
+            current_decision: 'granted',
+          },
+        ],
+        request_id: requestId,
+      }),
+    }),
+  );
+  await page.route('**/v1/shares?limit=50', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [],
+        next_cursor: null,
+        request_id: requestId,
+      }),
+    }),
+  );
+  await page.route('**/v1/consultation-reports', async (route) => {
+    payloads.push({
+      path: '/v1/consultation-reports',
+      body: route.request().postDataJSON(),
+    });
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'rpt_syntheticreport00001',
+        period: {
+          from: '2026-09-20T00:00:00.000Z',
+          to: '2026-09-21T00:00:00.000Z',
+        },
+        generated_at: '2026-09-21T00:00:01.000Z',
+        total_records: 1,
+        counts_by_category: { glucose: 1 },
+        counts_by_source_type: { observation: 1 },
+        limitations: [
+          'summary_is_descriptive_only',
+          'missing_records_do_not_mean_events_did_not_happen',
+          'record_count_does_not_measure_health_or_control',
+        ],
+        created_at: '2026-09-21T00:00:01.000Z',
+        request_id: requestId,
+      }),
+    });
+  });
+  await page.route(
+    '**/v1/consultation-reports/rpt_syntheticreport00001/questions',
+    async (route) => {
+      payloads.push({
+        path: '/questions',
+        body: route.request().postDataJSON(),
+      });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'rqe_syntheticquestion001',
+          question_key: 'review_records',
+          version: 1,
+          occurred_at: '2026-09-21T00:00:02.000Z',
+        }),
+      });
+    },
+  );
+  await page.route(
+    '**/v1/consultation-reports/rpt_syntheticreport00001/shares',
+    async (route) => {
+      const body = route.request().postDataJSON() as { expires_at: string };
+      payloads.push({ path: '/shares', body });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'shg_syntheticshare000001',
+          resource_type: 'consultation_report',
+          resource_id: 'rpt_syntheticreport00001',
+          recipient_ref: 'rcp_syntheticrecipient01',
+          purpose_version_id: 'pur_syntheticpurpose001',
+          status: 'active',
+          version: 1,
+          granted_at: '2026-09-21T00:00:03.000Z',
+          expires_at: body.expires_at,
+          revoked_at: null,
+          request_id: requestId,
+        }),
+      });
+    },
+  );
+  await page.route(
+    '**/v1/shares/shg_syntheticshare000001/revoke',
+    async (route) => {
+      payloads.push({ path: '/revoke', body: route.request().postDataJSON() });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'shg_syntheticshare000001',
+          resource_type: 'consultation_report',
+          resource_id: 'rpt_syntheticreport00001',
+          recipient_ref: 'rcp_syntheticrecipient01',
+          purpose_version_id: 'pur_syntheticpurpose001',
+          status: 'revoked',
+          version: 2,
+          granted_at: '2026-09-21T00:00:03.000Z',
+          expires_at: '2026-09-29T12:00:00.000Z',
+          revoked_at: '2026-09-21T00:00:04.000Z',
+          request_id: requestId,
+        }),
+      });
+    },
+  );
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Preparar consulta' }).click();
+  await page.getByLabel('Início do período').fill('2026-09-20T00:00');
+  await page.getByLabel('Fim do período').fill('2026-09-21T00:00');
+  await page.getByRole('button', { name: 'Criar resumo' }).click();
+  await expect(page.getByRole('status')).toContainText('Resumo criado');
+  await page.getByLabel('Revisar meus registros').click();
+  await expect(page.getByLabel('Revisar meus registros')).toBeChecked();
+  await expect(page.getByText('Finalidade autorizada:')).toContainText(
+    'Autocuidado com dados de saúde',
+  );
+  await page.getByRole('button', { name: 'Criar compartilhamento' }).click();
+  await expect(page.getByRole('status')).toContainText(
+    'Informe a referência opaca e uma expiração válida',
+  );
+  await page
+    .getByLabel('Referência opaca do destinatário')
+    .fill('rcp_syntheticrecipient01');
+  await page
+    .getByLabel('Expiração do compartilhamento')
+    .fill('2026-09-29T12:00');
+  await page.getByRole('button', { name: 'Criar compartilhamento' }).click();
+  await expect(page.getByText(/Estado: active/)).toBeVisible();
+  await page.getByRole('button', { name: 'Revogar compartilhamento' }).click();
+  await expect(page.getByRole('status')).toContainText(
+    'Compartilhamento revogado',
+  );
+
+  expect(payloads).toHaveLength(4);
+  expect(payloads[1]).toEqual({
+    path: '/questions',
+    body: { question_key: 'review_records', action: 'added' },
+  });
+  expect(payloads[2]).toMatchObject({
+    path: '/shares',
+    body: {
+      recipient_ref: 'rcp_syntheticrecipient01',
+      purpose_version_id: 'pur_syntheticpurpose001',
+    },
+  });
+  expect(payloads[3]).toEqual({
+    path: '/revoke',
+    body: { expected_version: 1 },
+  });
+  await expect(page.getByLabel('ID da versão da finalidade')).toHaveCount(0);
+});
+
 test('authenticated user can submit minimized privacy and support requests', async ({
   page,
 }) => {

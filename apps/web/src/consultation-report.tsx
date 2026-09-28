@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Value } from '@sinclair/typebox/value';
 import {
   ConsultationReportSchema,
+  ConsentPurposeListSchema,
   CreateShareGrantBodySchema,
   MeSchema,
   ShareGrantSchema,
@@ -27,7 +28,10 @@ export function ConsultationReport() {
   >([]);
   const [questions, setQuestions] = useState<string[]>([]);
   const [recipientRef, setRecipientRef] = useState('');
-  const [purposeVersionId, setPurposeVersionId] = useState('');
+  const [sharingPurpose, setSharingPurpose] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [expiresAt, setExpiresAt] = useState('');
   const [share, setShare] = useState<{
     id: string;
@@ -60,6 +64,33 @@ export function ConsultationReport() {
         if (response.ok && Value.Check(ShareGrantListSchema, body)) {
           setExistingShares((body as { items: typeof existingShares }).items);
         }
+      })
+      .catch(() => undefined);
+    void fetch('/v1/consent-purposes', {
+      credentials: 'include',
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        const body: unknown = await response.json();
+        if (!response.ok || !Value.Check(ConsentPurposeListSchema, body))
+          return;
+        const purpose = (
+          body as {
+            items: Array<{
+              id: string;
+              purpose_key: string;
+              title: string;
+              current_decision: 'granted' | 'denied' | 'revoked' | null;
+            }>;
+          }
+        ).items.find(
+          (item) =>
+            item.purpose_key === 'self_care_health_data' &&
+            item.current_decision === 'granted',
+        );
+        setSharingPurpose(
+          purpose ? { id: purpose.id, title: purpose.title } : null,
+        );
       })
       .catch(() => undefined);
   }, [access]);
@@ -132,16 +163,19 @@ export function ConsultationReport() {
     }
   }
   async function createShare() {
+    const expiresAtMilliseconds = Date.parse(expiresAt);
     if (
       !report ||
+      !sharingPurpose ||
+      !Number.isFinite(expiresAtMilliseconds) ||
       !Value.Check(CreateShareGrantBodySchema, {
         recipient_ref: recipientRef,
-        purpose_version_id: purposeVersionId,
-        expires_at: new Date(expiresAt).toISOString(),
+        purpose_version_id: sharingPurpose.id,
+        expires_at: new Date(expiresAtMilliseconds).toISOString(),
       })
     ) {
       setMessage(
-        'Informe a referência opaca, a finalidade publicada e uma expiração válida.',
+        'Informe a referência opaca e uma expiração válida, com a finalidade de autocuidado autorizada.',
       );
       return;
     }
@@ -158,8 +192,8 @@ export function ConsultationReport() {
           },
           body: JSON.stringify({
             recipient_ref: recipientRef,
-            purpose_version_id: purposeVersionId,
-            expires_at: new Date(expiresAt).toISOString(),
+            purpose_version_id: sharingPurpose.id,
+            expires_at: new Date(expiresAtMilliseconds).toISOString(),
           }),
         },
       );
@@ -323,13 +357,11 @@ export function ConsultationReport() {
                   placeholder="Referência opaca"
                   className="mt-3 w-full rounded-xl border border-stone-300 px-3 py-2.5"
                 />
-                <input
-                  aria-label="ID da versão da finalidade"
-                  value={purposeVersionId}
-                  onChange={(event) => setPurposeVersionId(event.target.value)}
-                  placeholder="ID da finalidade publicada"
-                  className="mt-3 w-full rounded-xl border border-stone-300 px-3 py-2.5"
-                />
+                <p className="mt-3 text-sm text-stone-600">
+                  {sharingPurpose
+                    ? `Finalidade autorizada: ${sharingPurpose.title}.`
+                    : 'Autorize a finalidade de autocuidado antes de criar um compartilhamento.'}
+                </p>
                 <input
                   aria-label="Expiração do compartilhamento"
                   type="datetime-local"
@@ -338,7 +370,11 @@ export function ConsultationReport() {
                   className="mt-3 w-full rounded-xl border border-stone-300 px-3 py-2.5"
                 />
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Button type="button" onClick={() => void createShare()}>
+                  <Button
+                    type="button"
+                    onClick={() => void createShare()}
+                    disabled={!sharingPurpose}
+                  >
                     Criar compartilhamento
                   </Button>
                   {share?.status === 'active' ? (
