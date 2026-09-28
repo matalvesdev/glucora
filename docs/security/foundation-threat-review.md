@@ -12,6 +12,9 @@ Scope: public availability probes and a static shell; no health data storage, id
   JavaScript and TypeScript on main, pull requests and a weekly schedule. This
   complements secret and dependency scans; DAST remains tied to an actually
   deployed sandbox endpoint.
+- API routes are rate limited per process and remote address; health and
+  readiness probes are the only exemptions. Distributed edge enforcement and
+  trusted-proxy review remain production deployment gates.
 - Authentication and authorization are not simulated. No patient-facing capability exists; deny-by-default is absence of business routes.
 - No analytics, remote fonts, ad pixels, AI calls or service-worker health caching.
   Residual risks: internet-facing abuse/rate limiting and edge TLS deployment, auth/CSRF, production roles, metrics/tracing exporter, external security review and clinical/privacy gates are future requirements, not completed controls.

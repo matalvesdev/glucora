@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import Fastify, { LogController } from 'fastify';
 import swagger from '@fastify/swagger';
 import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import { Type } from '@sinclair/typebox';
 import {
   ConsentDecisionResponseSchema,
@@ -102,6 +103,7 @@ export interface AppDependencies {
   logger?: ReturnType<typeof createLogger>;
   metrics?: MetricSink;
   now?: () => Date;
+  rateLimit?: { readonly max: number; readonly timeWindow: number };
 }
 
 function encodeConsentCursor(item: ConsentHistoryItem): string {
@@ -275,6 +277,15 @@ export function buildApp(deps: AppDependencies) {
     ajv: { customOptions: { removeAdditional: false } },
   });
   app.register(helmet);
+  app.register(rateLimit, {
+    global: true,
+    max: deps.rateLimit?.max ?? 120,
+    timeWindow: deps.rateLimit?.timeWindow ?? 60_000,
+    allowList: (request) => {
+      const path = request.url.split('?', 1)[0];
+      return path === '/v1/health' || path === '/v1/ready';
+    },
+  });
   app.register(swagger, {
     openapi: {
       info: { title: 'Glucora API', version: '0.1.0' },

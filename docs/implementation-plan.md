@@ -27,6 +27,11 @@ semanal, com permissões mínimas e ações fixadas por commit. Gitleaks, verifi
 local de padrões e auditoria de dependências continuam como controles
 complementares; DAST aguarda um sandbox implantado.
 
+ADR-067 trata o primeiro resultado CodeQL de H6 com rate limiting global por
+instância na API e exceção exclusiva para liveness/readiness. O controle atende
+ao sandbox; rate limiting distribuído e proteção de borda permanecem gates do
+deploy de produção.
+
 ## Sequência seguinte
 
 Registro de decisão: ADR-013 a ADR-041 foram aceitos por Mateus Alves Bassane em 2026-09-10, com evidência `00001`. As referências históricas a `PROPOSED` nas entradas abaixo descrevem o estado no momento daquele slice e são substituídas por este registro; limites que os ADRs mantêm abertos continuam abertos até uma decisão específica posterior.

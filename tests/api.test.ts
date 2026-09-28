@@ -102,6 +102,25 @@ describe('foundation HTTP contract and privacy', () => {
     expect(Value.Check(ErrorSchema, response.json())).toBe(true);
     expect(response.body).not.toContain('secret');
   });
+  it('rate limits API traffic while keeping health probes available', async () => {
+    const logs = captureLogs();
+    const app = buildApp({
+      checkReadiness: async () => {},
+      logger: createLogger('info', logs.stream),
+      rateLimit: { max: 2, timeWindow: 60_000 },
+    });
+    apps.push(app);
+
+    expect((await app.inject('/v1/me')).statusCode).toBe(401);
+    expect((await app.inject('/v1/me')).statusCode).toBe(401);
+    const limited = await app.inject('/v1/me');
+    expect(limited.statusCode).toBe(429);
+    expect(Value.Check(ErrorSchema, limited.json())).toBe(true);
+    expect(limited.json()).toMatchObject({ code: 'INVALID_REQUEST' });
+    expect(limited.headers['retry-after']).toBeDefined();
+    expect((await app.inject('/v1/health')).statusCode).toBe(200);
+    expect((await app.inject('/v1/ready')).statusCode).toBe(200);
+  });
   it('emits bounded operational signals without request content', async () => {
     const records: unknown[] = [];
     let readinessFailures = 0;

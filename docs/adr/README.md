@@ -55,3 +55,7 @@ Actions sem registrar URL, credenciais ou payloads.
 ADR-066 foi aceita por Mateus Alves Bassane em 2026-09-28, com evidência
 `00001`, para executar SAST gratuito de JavaScript e TypeScript com CodeQL no
 repositório público, com permissões mínimas e ações fixadas por commit.
+
+ADR-067 foi aceita por Mateus Alves Bassane em 2026-09-28, com evidência
+`00001`, para limitar requisições por instância na API do sandbox, preservando
+somente os probes de saúde e mantendo proteção distribuída como gate de produção.
