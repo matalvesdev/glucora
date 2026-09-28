@@ -61,10 +61,20 @@ test('privacy and support remain closed without an authenticated account', async
   ).toBe(true);
 });
 
-test('authenticated user records an approved manual glucose measurement', async ({
+test('authenticated user records and corrects an approved manual glucose measurement', async ({
   page,
 }) => {
-  const payloads: unknown[] = [];
+  const creationPayloads: unknown[] = [];
+  const correctionPayloads: unknown[] = [];
+  let currentObservation:
+    | {
+        id: string;
+        decimal_value: string;
+        occurred_at: string;
+        source_type: 'manual';
+        version: number;
+      }
+    | undefined;
   await page.route('**/v1/me', (route) =>
     route.fulfill({
       status: 200,
@@ -81,20 +91,26 @@ test('authenticated user records an approved manual glucose measurement', async 
       }),
     }),
   );
+  await page.route('**/v1/observations?*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: currentObservation ? [currentObservation] : [],
+        next_cursor: null,
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    });
+  });
   await page.route('**/v1/observations', async (route) => {
-    if (route.request().method() === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          items: [],
-          next_cursor: null,
-          request_id: '123e4567-e89b-42d3-a456-426614174000',
-        }),
-      });
-      return;
-    }
-    payloads.push(route.request().postDataJSON());
+    creationPayloads.push(route.request().postDataJSON());
+    currentObservation = {
+      id: 'obs_syntheticcapture0001',
+      decimal_value: '101.25',
+      occurred_at: '2026-01-01T13:00:00.000Z',
+      source_type: 'manual',
+      version: 1,
+    };
     await route.fulfill({
       status: 201,
       contentType: 'application/json',
@@ -111,6 +127,34 @@ test('authenticated user records an approved manual glucose measurement', async 
       }),
     });
   });
+  await page.route(
+    '**/v1/observations/obs_syntheticcapture0001',
+    async (route) => {
+      correctionPayloads.push(route.request().postDataJSON());
+      currentObservation = {
+        id: 'obs_syntheticcapture0001',
+        decimal_value: '103',
+        occurred_at: '2026-01-01T13:15:00.000Z',
+        source_type: 'manual',
+        version: 2,
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: currentObservation.id,
+          type: { system: 'http://loinc.org', code: '2339-0' },
+          decimal_value: currentObservation.decimal_value,
+          unit: { system: 'http://unitsofmeasure.org', code: 'mg/dL' },
+          occurred_at: currentObservation.occurred_at,
+          source_type: currentObservation.source_type,
+          method: 'capillary_user_reported',
+          version: currentObservation.version,
+          request_id: '123e4567-e89b-42d3-a456-426614174000',
+        }),
+      });
+    },
+  );
   await page.goto('/');
   await page.getByRole('button', { name: 'Registrar glicose' }).click();
   await expect(
@@ -120,12 +164,31 @@ test('authenticated user records an approved manual glucose measurement', async 
   await page.getByLabel('Momento da medição').fill('2026-01-01T10:00');
   await page.getByRole('button', { name: 'Registrar medição' }).click();
   await expect(page.getByRole('status')).toContainText('Medição registrada');
-  expect(payloads).toHaveLength(1);
-  expect(payloads[0]).toMatchObject({
+  expect(creationPayloads).toHaveLength(1);
+  expect(creationPayloads[0]).toMatchObject({
     decimal_value: '101.25',
     occurred_at: expect.stringMatching(/^2026-01-01T/),
   });
-  expect(JSON.stringify(payloads[0])).not.toContain('alert');
+  expect(JSON.stringify(creationPayloads[0])).not.toContain('alert');
+
+  await expect(page.getByText('101.25 mg/dL')).toBeVisible();
+  await page.getByRole('button', { name: 'Corrigir medição' }).click();
+  await page.locator('#correction-value').fill('103');
+  await page.locator('#correction-occurred').fill('2026-01-01T10:15');
+  await page.getByRole('button', { name: 'Salvar correção' }).click();
+
+  await expect(page.getByRole('status')).toContainText(
+    'a versão anterior foi preservada',
+  );
+  await expect(page.getByText('103 mg/dL')).toBeVisible();
+  await expect(page.getByText('101.25 mg/dL')).toHaveCount(0);
+  expect(correctionPayloads).toHaveLength(1);
+  expect(correctionPayloads[0]).toMatchObject({
+    expected_version: 1,
+    decimal_value: '103',
+    occurred_at: expect.stringMatching(/^2026-01-01T/),
+  });
+  expect(JSON.stringify(correctionPayloads[0])).not.toContain('alert');
 });
 
 test('authenticated user filters the own timeline with closed parameters', async ({

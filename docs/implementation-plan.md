@@ -59,7 +59,8 @@ C5 implementado no escopo aprovado: correção preserva a versão anterior, cria
 
 ADR-054 expõe C5 exclusivamente para a medição manual aprovada na ADR-052:
 a rota e a interface exigem ownership, consentimento, idempotência e versão
-esperada; a versão anterior é preservada como superseded.
+esperada; a versão anterior é preservada como superseded. A jornada E2E cobre
+criação seguida de correção e confirma a troca da versão corrente exibida.
 
 C6–C8 em fundação: timezone IANA e offset são preservados e validados; catálogo de tipo/unidade é deny-by-default; consultas correntes usam ownership e paginação keyset. ADR-020 está aceita; catálogo e API reais continuam bloqueados.
 
