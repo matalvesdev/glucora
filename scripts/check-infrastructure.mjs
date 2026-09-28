@@ -64,6 +64,7 @@ const expectations = [
   [sandboxHealthScript, "'/v1/health'", 'liveness monitor'],
   [sandboxHealthScript, "'/v1/ready'", 'readiness monitor'],
   [codeql, 'security-events: write', 'CodeQL result permission'],
+  [codeql, 'actions: read', 'CodeQL workflow metadata permission'],
   [codeql, 'languages: javascript-typescript', 'TypeScript SAST language'],
   [codeql, 'queries: security-extended', 'extended security query suite'],
   [codeql, 'timeout-minutes: 15', 'bounded CodeQL runtime'],
