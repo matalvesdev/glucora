@@ -8,8 +8,8 @@
     "open": "cap open android"
   },
   "dependencies": {
-    "@capacitor/android": "^7.6.9",
-    "@capacitor/core": "^7.6.9"
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.6.9"
