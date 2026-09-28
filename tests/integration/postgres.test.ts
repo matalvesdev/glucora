@@ -472,6 +472,66 @@ describe('real PostgreSQL migrations and readiness', () => {
               '2026-01-05T00:00:00.000Z',
             ],
           );
+          await client.query(
+            `INSERT INTO timeline.items
+              (id,user_id,source_kind,source_id,source_version,category_system,
+               category_code,fact_class,source_type,occurred_at,
+               observed_timezone,utc_offset_minutes,projected_at)
+             VALUES ($1,$2,'context_event',$3,1,'synthetic.test','deletion',
+                     'declaration','manual',$4,'UTC',0,$4)`,
+            [
+              'tli_syntheticdeletion001',
+              deletionInReview.userId,
+              'ctx_syntheticdeletion001',
+              '2026-01-05T00:00:00.000Z',
+            ],
+          );
+          await expect(
+            ready.timelineProjectionDeletionTarget.fulfill({
+              privacyRequestId: deletionInReview.id,
+              userId: 'usr_syntheticconsumer001',
+            }),
+          ).rejects.toThrow('Deletion request is not eligible');
+          const otherHolderTimelineCount = (
+            await client.query<{ count: number }>(
+              'SELECT count(*)::integer AS count FROM timeline.items WHERE user_id=$1',
+              ['usr_syntheticconsumer001'],
+            )
+          ).rows[0]!.count;
+          const projectionReceipt =
+            await ready.timelineProjectionDeletionTarget.fulfill({
+              privacyRequestId: deletionInReview.id,
+              userId: deletionInReview.userId,
+            });
+          expect(projectionReceipt).toMatchObject({
+            targetId: 'timeline_projection',
+            targetClass: 'projection',
+            outcome: 'deleted',
+            reasonCode: 'deletion_confirmed',
+            evidenceRef: `privacy-request:${deletionInReview.id}`,
+          });
+          expect(
+            (
+              await client.query(
+                'SELECT count(*)::integer AS count FROM timeline.items WHERE user_id=$1',
+                [deletionInReview.userId],
+              )
+            ).rows,
+          ).toEqual([{ count: 0 }]);
+          expect(
+            (
+              await client.query<{ count: number }>(
+                'SELECT count(*)::integer AS count FROM timeline.items WHERE user_id=$1',
+                ['usr_syntheticconsumer001'],
+              )
+            ).rows[0]!.count,
+          ).toBe(otherHolderTimelineCount);
+          await ready.deletionTargetReceipts.record({
+            id: 'drc_syntheticprojection01',
+            privacyRequestId: deletionInReview.id,
+            userId: deletionInReview.userId,
+            ...projectionReceipt,
+          });
           await expect(
             ready.canonicalHealthDeletionTarget.fulfill({
               privacyRequestId: deletionInReview.id,
@@ -522,6 +582,10 @@ describe('real PostgreSQL migrations and readiness', () => {
               id: 'drc_syntheticcanonical001',
               legalHoldRef: null,
             }),
+            expect.objectContaining({
+              id: 'drc_syntheticprojection01',
+              targetClass: 'projection',
+            }),
           ]);
           await expect(
             ready.deletionTargetReceipts.listForRequest(
@@ -530,11 +594,6 @@ describe('real PostgreSQL migrations and readiness', () => {
             ),
           ).resolves.toEqual([]);
           for (const receipt of [
-            {
-              id: 'drc_syntheticprojection01',
-              targetId: 'timeline_projection',
-              targetClass: 'projection' as const,
-            },
             {
               id: 'drc_syntheticvendor00001',
               targetId: 'synthetic_vendor',

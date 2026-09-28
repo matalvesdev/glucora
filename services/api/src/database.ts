@@ -13,6 +13,7 @@ import { createPostgresConsultationReportRepository } from './modules/consultati
 import { createPostgresConsultationQuestionRepository } from './modules/consultation/consultation-question-repository';
 import { createPostgresPrivacyRequestRepository } from './modules/privacy/privacy-request-repository';
 import { createPostgresCanonicalHealthDeletionTarget } from './modules/privacy/canonical-health-deletion-target';
+import { createPostgresTimelineProjectionDeletionTarget } from './modules/privacy/timeline-projection-deletion-target';
 import { createPostgresDeletionTargetReceiptRepository } from './modules/privacy/deletion-target-receipt-repository';
 import { createPostgresRetentionHoldRepository } from './modules/privacy/retention-hold-repository';
 import { createPostgresShareGrantRepository } from './modules/sharing/share-grant-repository';
@@ -46,6 +47,8 @@ export function createDatabase(connectionString: string) {
   const privacyRequests = createPostgresPrivacyRequestRepository(pool);
   const canonicalHealthDeletionTarget =
     createPostgresCanonicalHealthDeletionTarget(pool);
+  const timelineProjectionDeletionTarget =
+    createPostgresTimelineProjectionDeletionTarget(pool);
   const deletionTargetReceipts =
     createPostgresDeletionTargetReceiptRepository(pool);
   const retentionHolds = createPostgresRetentionHoldRepository(pool);
@@ -74,6 +77,7 @@ export function createDatabase(connectionString: string) {
     consultationQuestions,
     privacyRequests,
     canonicalHealthDeletionTarget,
+    timelineProjectionDeletionTarget,
     deletionTargetReceipts,
     retentionHolds,
     shareGrants,

@@ -43,3 +43,7 @@ da transição atômica do pedido de exportação para `fulfilled`.
 ADR-063 foi aceita por Mateus Alves Bassane em 2026-09-28, com evidência
 `00001`, para tornar a repetição exata da confirmação de entrega idempotente,
 sem duplicar transição, evento ou auditoria.
+
+ADR-064 foi aceita por Mateus Alves Bassane em 2026-09-28, com evidência
+`00001`, para separar a exclusão da timeline descartável em um adapter de
+projeção com autorização e recibo próprios.

@@ -165,6 +165,11 @@ ADR-049 foi aceita: a finalização interna exige plano com cobertura mínima da
 
 G8 em fundação: o percurso completo de finalização interna é exercitado contra PostgreSQL com recibos sintéticos persistidos das quatro classes e auditoria `system`. A prova não habilita executor, agenda, endpoint público ou credenciais operacionais.
 
+ADR-064 substitui a evidência sintética da classe `projection` por um adapter
+PostgreSQL real: ele bloqueia o pedido elegível, elimina somente a timeline do
+titular e emite recibo mínimo. Vendor e backup continuam sem adapter aprovado e
+impedem conclusão operacional sem suas próprias evidências.
+
 G8 em fundação: a reconciliação revalida o recibo persistido mais recente de cada target antes de tratá-lo como cobertura; evidência ausente, data inválida ou semântica de retenção inválida mantêm o pedido incompleto.
 
 E5/G1 em fundação validada: gerador JSON estruturado aceita apenas pedido de exportação em revisão, agrega seções explícitas, preserva versões/provenance, bloqueia dados de outro titular e gera checksum determinístico, com testes sintéticos. ADR-033 está aceita; storage, criptografia, expiração, entrega, reautenticação e adapters reais continuam pendentes.
