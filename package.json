@@ -36,19 +36,19 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.0",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.2",
     "@types/pg": "^8.15.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "concurrently": "^9.2.0",
+    "concurrently": "^10.0.5",
     "eslint": "^10.10.0",
     "globals": "^17.0.0",
     "prettier": "^3.8.0",
     "tsup": "^8.5.0",
     "tsx": "^4.21.0",
-    "typescript": "~5.9.3",
+    "typescript": "~7.0.2",
     "typescript-eslint": "^8.56.0",
-    "vitest": "^4.0.0",
+    "vitest": "^5.0.2",
     "pg": "^8.18.0",
     "@sinclair/typebox": "^0.34.48"
   }
