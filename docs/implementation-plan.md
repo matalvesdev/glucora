@@ -133,6 +133,11 @@ H1/H4/H7 em fundação: métricas HTTP/readiness possuem campos fechados sem pay
 
 H1/H4 em fundação: o logger remove recursivamente campos de conteúdo, saúde e credenciais de objetos estruturados antes de emissão, além da redaction do runtime. Exporter e observabilidade de produção permanecem abertos.
 
+H1 no sandbox sintético: a ADR-065 adiciona monitor externo gratuito de
+liveness e readiness a cada quinze minutos. Ele valida resposta mínima, não
+envia autenticação e não imprime URL ou corpo. A ativação depende do secret
+`SANDBOX_API_URL`; paging, SLA e observabilidade de produção continuam abertos.
+
 F8/G6 em fundação: contestação append-only por output/versão usa motivos controlados, ownership e auditoria atômica; recursos contestados podem ser excluídos de contexto futuro. ADR-028 está aceita; resolução/SLA e `ai_runs` reais continuam pendentes.
 
 H8/H9: readiness de private beta exige evidências/owners de Product, Clinical, Compliance, Security e Operations mais enrollment explícito. Os cinco gates foram aprovados por Mateus Alves Bassane com a evidência `00001`; enrollment foi habilitado por autorização explícita. CI executa a validação estrita. ADR-029 está aceita; a decisão de arquitetura nela descrita não substitui as aprovações registradas no gate.

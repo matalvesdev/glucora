@@ -1,0 +1,36 @@
+name: Sandbox health monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sandbox-health-monitor
+  cancel-in-progress: true
+
+jobs:
+  check-sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      SANDBOX_API_URL: ${{ secrets.SANDBOX_API_URL }}
+    steps:
+      - name: Detect monitor configuration
+        id: configuration
+        shell: bash
+        run: |
+          if [[ -n "$SANDBOX_API_URL" ]]; then
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo 'Sandbox health monitor is not configured.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: steps.configuration.outputs.enabled == 'true'
+      - name: Check liveness and database readiness
+        if: steps.configuration.outputs.enabled == 'true'
+        run: node scripts/check-sandbox-health.mjs

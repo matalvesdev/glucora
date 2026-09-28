@@ -47,3 +47,7 @@ sem duplicar transição, evento ou auditoria.
 ADR-064 foi aceita por Mateus Alves Bassane em 2026-09-28, com evidência
 `00001`, para separar a exclusão da timeline descartável em um adapter de
 projeção com autorização e recibo próprios.
+
+ADR-065 foi aceita por Mateus Alves Bassane em 2026-09-28, com evidência
+`00001`, para monitorar liveness e readiness do sandbox sintético por GitHub
+Actions sem registrar URL, credenciais ou payloads.

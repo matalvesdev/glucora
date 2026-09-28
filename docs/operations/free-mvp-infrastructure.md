@@ -19,6 +19,12 @@ No primeiro provisionamento do Blueprint, o responsável fornece
 executa as migrações versionadas e só então inicia a API; `/v1/ready` impede a
 promoção de uma instância sem PostgreSQL disponível.
 
+O workflow `Sandbox health monitor` consulta `/v1/health` e `/v1/ready` a cada
+quinze minutos. Configure a URL base HTTPS da API no GitHub Actions Secret
+`SANDBOX_API_URL`; a URL não é impressa pelo script. Sem esse secret, o workflow
+declara que o monitor ainda não está configurado e não realiza requisições.
+Falha deixa o workflow vermelho, mas não constitui SLA ou paging de produção.
+
 Limites verificados em 2026-09-24 nas páginas oficiais do
 [Render](https://render.com/docs/free),
 [Supabase](https://supabase.com/pricing) e
