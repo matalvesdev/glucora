@@ -179,6 +179,10 @@ sem payload; após validar os bytes, o cliente confirma ID e SHA-256. Recibo,
 transição para `fulfilled`, evento e auditoria são vinculados e atômicos no
 PostgreSQL. A evidência comprova recebimento pelo cliente, não leitura humana.
 
+ADR-063 torna a confirmação exata idempotente: uma repetição após perda da
+resposta devolve o pedido já `fulfilled` sem criar nova transição, evento ou
+auditoria; qualquer divergência permanece fail-closed.
+
 G1/G3/G7 em API condicionada: POST/GET de solicitações de privacidade exigem autenticação, conta ativa, ownership, idempotência e validação runtime; o servidor deriva titular e estado. Sem referência explícita da política de retenção, novas criações são bloqueadas, mas status existente permanece legível. ADR-034 está aceita; identidade/política de produção, UI, verificação e fulfillment continuam pendentes.
 
 H5 em API/UI condicionada: POST/listagem de suporte exigem autenticação, conta ativa, idempotência, categoria controlada, ownership e cursor opaco; texto livre e campos adicionais são rejeitados. A interface lista os próprios pedidos, pagina e a atualiza após criação válida. Sem referência explícita de retenção, novas entradas são bloqueadas, mas registros existentes permanecem legíveis. ADR-035 e ADR-040 estão aceitas; roteamento, operador, triagem, SLA e fornecedor continuam pendentes.

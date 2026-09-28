@@ -1002,6 +1002,34 @@ describe('real PostgreSQL migrations and readiness', () => {
             }),
           ).resolves.toMatchObject({ status: 'fulfilled', version: 3 });
           await expect(
+            ready.exportDeliveries.acknowledgeAndFulfill({
+              deliveryId: 'exp_syntheticdelivery001',
+              requestId: inReview.id,
+              userId: inReview.userId,
+              sha256: exportArtifact.sha256,
+              acknowledgedAt: '2026-01-06T00:00:02.000Z',
+              eventId: 'dse_syntheticretry000001',
+              auditId: 'aud_syntheticretry000001',
+              auditRequestId: 'd6e3ec27-f5d0-4452-a262-6f564fab3831',
+              retentionPolicyRef: 'synthetic-retention-review-ref',
+            }),
+          ).resolves.toMatchObject({ status: 'fulfilled', version: 3 });
+          await expect(
+            client.query<{ count: string }>(
+              `SELECT COUNT(*)::text AS count FROM privacy.request_events
+                WHERE request_id=$1 AND reason_code='client_checksum_acknowledged'`,
+              [inReview.id],
+            ),
+          ).resolves.toMatchObject({ rows: [{ count: '1' }] });
+          await expect(
+            client.query<{ count: string }>(
+              `SELECT COUNT(*)::text AS count FROM audit.events
+                WHERE resource_type='privacy_request' AND resource_id=$1
+                  AND event_key='privacy.export_delivered'`,
+              [inReview.id],
+            ),
+          ).resolves.toMatchObject({ rows: [{ count: '1' }] });
+          await expect(
             ready.timeline.list('usr_syntheticconsumer001', { limit: 10 }),
           ).resolves.toMatchObject([
             {

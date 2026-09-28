@@ -57,13 +57,31 @@ export function createPostgresExportDeliveryRepository(
           [input.requestId, input.userId],
         );
         const current = request.rows[0];
+        if (!current || current.kind !== 'export')
+          throw new Error('Export delivery conflict');
+        const receipt = await client.query<{
+          status: 'generated' | 'acknowledged';
+        }>(
+          `SELECT status FROM privacy.export_delivery_receipts
+            WHERE id=$1 AND request_id=$2 AND user_id=$3 AND sha256=$4
+            FOR UPDATE`,
+          [input.deliveryId, input.requestId, input.userId, input.sha256],
+        );
+        const currentReceipt = receipt.rows[0];
+        if (!currentReceipt) throw new Error('Export delivery conflict');
         if (
-          !current ||
-          current.kind !== 'export' ||
-          current.status !== 'in_review'
+          current.status === 'fulfilled' &&
+          currentReceipt.status === 'acknowledged'
+        ) {
+          await client.query('COMMIT');
+          return map(current);
+        }
+        if (
+          current.status !== 'in_review' ||
+          currentReceipt.status !== 'generated'
         )
           throw new Error('Export delivery conflict');
-        const receipt = await client.query(
+        const acknowledgement = await client.query(
           `UPDATE privacy.export_delivery_receipts
               SET status='acknowledged',acknowledged_at=$5
             WHERE id=$1 AND request_id=$2 AND user_id=$3 AND sha256=$4
@@ -77,7 +95,8 @@ export function createPostgresExportDeliveryRepository(
             input.acknowledgedAt,
           ],
         );
-        if (receipt.rowCount !== 1) throw new Error('Export delivery conflict');
+        if (acknowledgement.rowCount !== 1)
+          throw new Error('Export delivery conflict');
         const updated = await client.query<RequestRow>(
           `UPDATE privacy.requests SET status='fulfilled',version=version+1,updated_at=$3
             WHERE id=$1 AND user_id=$2 RETURNING ${columns}`,

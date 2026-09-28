@@ -39,3 +39,7 @@ recente, ownership e transição auditada para revisão.
 ADR-062 foi aceita por Mateus Alves Bassane em 2026-09-24, com evidência
 `00001`, para registrar geração e confirmação de recebimento por checksum antes
 da transição atômica do pedido de exportação para `fulfilled`.
+
+ADR-063 foi aceita por Mateus Alves Bassane em 2026-09-28, com evidência
+`00001`, para tornar a repetição exata da confirmação de entrega idempotente,
+sem duplicar transição, evento ou auditoria.

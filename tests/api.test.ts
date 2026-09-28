@@ -407,6 +407,7 @@ describe('foundation HTTP contract and privacy', () => {
         generatedDelivery = receipt;
       },
       acknowledgeAndFulfill: async () => {
+        if (stored.status === 'fulfilled') return stored;
         stored = {
           ...stored,
           status: 'fulfilled',
@@ -465,6 +466,20 @@ describe('foundation HTTP contract and privacy', () => {
     });
     expect(acknowledged.statusCode).toBe(200);
     expect(acknowledged.json()).toMatchObject({
+      status: 'fulfilled',
+      version: 3,
+    });
+    const repeatedAcknowledgement = await app.inject({
+      method: 'POST',
+      url: `/v1/privacy-requests/${stored.id}/export-acknowledgements`,
+      headers: { 'x-glucora-dev-actor': syntheticAccount.id },
+      payload: {
+        delivery_id: generatedDelivery!.id,
+        sha256: generatedDelivery!.sha256,
+      },
+    });
+    expect(repeatedAcknowledgement.statusCode).toBe(200);
+    expect(repeatedAcknowledgement.json()).toMatchObject({
       status: 'fulfilled',
       version: 3,
     });
