@@ -30,7 +30,9 @@ complementares; DAST aguarda um sandbox implantado.
 ADR-067 trata o primeiro resultado CodeQL de H6 com rate limiting global por
 instância na API e exceção exclusiva para liveness/readiness. O controle atende
 ao sandbox; rate limiting distribuído e proteção de borda permanecem gates do
-deploy de produção.
+deploy de produção. O contrato OpenAPI publica a resposta segura `429` em toda
+rota limitada e o gerador bloqueia divergências entre as exceções do runtime e
+as do contrato.
 
 ## Sequência seguinte
 

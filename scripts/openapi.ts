@@ -7,7 +7,23 @@ const app = buildApp({
   logger: createLogger('silent'),
 });
 await app.ready();
-const serialized = JSON.stringify(app.swagger(), null, 2) + '\n';
+const document = app.swagger();
+for (const [path, pathItem] of Object.entries(document.paths ?? {})) {
+  if (!pathItem) continue;
+  for (const operation of Object.values(pathItem)) {
+    if (
+      typeof operation !== 'object' ||
+      operation === null ||
+      !('responses' in operation)
+    )
+      continue;
+    const responses = operation.responses as Record<string, unknown>;
+    const exempt = path === '/v1/health' || path === '/v1/ready';
+    if (exempt ? '429' in responses : !('429' in responses))
+      throw new Error(`OpenAPI rate-limit response mismatch for ${path}.`);
+  }
+}
+const serialized = JSON.stringify(document, null, 2) + '\n';
 const file = 'packages/contracts/openapi.json';
 if (process.argv.includes('--write')) await writeFile(file, serialized);
 else if (

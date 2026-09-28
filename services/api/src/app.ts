@@ -291,6 +291,22 @@ export function buildApp(deps: AppDependencies) {
       info: { title: 'Glucora API', version: '0.1.0' },
       openapi: '3.0.3',
     },
+    transform: ({ schema, url }) => ({
+      schema:
+        url === '/v1/health' || url === '/v1/ready'
+          ? schema
+          : {
+              ...schema,
+              response: {
+                ...(typeof schema.response === 'object' &&
+                schema.response !== null
+                  ? schema.response
+                  : {}),
+                429: ErrorSchema,
+              },
+            },
+      url,
+    }),
   });
   app.addHook('onRequest', async (request, reply) => {
     reply
